@@ -7,7 +7,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from djoser.views import UserViewSet as DjoserUserViewSet
 
-from .serializers import UserSerializer
+from .serializers import AvatarSerializer, SubscriptionsSerializer, UserSerializer
 
 User = get_user_model()
 
@@ -16,56 +16,57 @@ class UserViewSet(DjoserUserViewSet):
     """Вьюсет получения/создания пользователей."""
 
     pagination_class = PageNumberPagination
-    # serializer_class = UserSerializer
 
-    # def get_permissions(self):
-    #     if self.action == "me":
-    #         return [IsAuthenticated()]
-    #     elif self.action == "list":
-    #         return [AllowAny()]
-    #     return super().get_permissions()
+    def get_permissions(self):
+        if self.action == "retrieve":
+            self.permission_classes = (AllowAny,)
+        elif self.action == "me":
+            self.permission_classes = (IsAuthenticated,)
+        return super().get_permissions()
+
+    @action(
+        detail=False,
+        url_path="me/avatar",
+        methods=("put",),
+        permission_classes=(IsAuthenticated,),
+    )
+    def avatar(self, request):
+        """Добавление аватара пользователя"""
+        user = request.user
+        serializer = AvatarSerializer(
+            user, data=request.data, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+    @avatar.mapping.delete
+    def delete_avatar(self, request):
+        if request.user.avatar:
+            request.user.avatar.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(
+        detail=False,
+        url_path="subscriptions",
+        methods=("get",),
+        permission_classes=(IsAuthenticated,),
+    )
+    def subscriptions(self, request):
+        """Возвращает пользователей, на которых подписан текущий юзер."""
+        user = self.request.user
+        subscriptions = user.following_subscriptions.select_related("following").all()
+        following_users = [subscription.following for subscription in subscriptions]
+        page = self.paginate_queryset(following_users)
+        serializer = UserSerializer(page, many=True, context={"request": request})
+        return self.get_paginated_response(serializer.data)
 
 
-# class UserViewSet(viewsets.ModelViewSet):
-#     """Вьюсет получения/создания/обновления/удаления пользователей."""
-
-#     queryset = User.objects.all()
-#     serializer_class = UserSerializer
-#     permission_classes = (AllowAny,)
-#     pagination_class = PageNumberPagination
-#     filter_backends = (filters.SearchFilter,)
-#     search_fields = ("username",)
-
-#     @action(detail=False, url_path="me", permission_classes=(IsAuthenticated,))
-#     def myself(self, request):
-#         """Позволяет пользователю получить информацию о себе."""
-#         serializer = self.get_serializer(request.user)
-#         return Response(serializer.data, status=status.HTTP_200_OK)
-
-#     @action(
-#         detail=False,
-#         url_path="me/avatar",
-#         methods=("put", "delete"),
-#         permission_classes=(IsAuthenticated,),
-#     )
-#     def edit_avatar(self, request):
-#         """Позволяет пользователю добавить или удалить аватар."""
-#         user = request.user
-
-#         if request.method == "PUT":
-#             avatar = request.data.get("avatar")
-#             if avatar:
-#                 user.avatar = avatar
-#                 user.save()
-#                 return Response({"status": "avatar updated"}, status=status.HTTP_200_OK)
-#             else:
-#                 return Response(
-#                     {"error": "avatar not provided"}, status=status.HTTP_400_BAD_REQUEST
-#                 )
-
-#         elif request.method == "DELETE":
-#             user.avatar = None
-#             user.save()
-#             return Response(
-#                 {"status": "avatar deleted"}, status=status.HTTP_204_NO_CONTENT
-#             )
+# user = self.request.user
+# subscriptions = user.followers.all()
+# # Добавляем пагинацию
+# page = self.paginate_queryset(subscriptions)
+# serializer = SubscriptionsSerializer(
+#     page, many=True, context={"request": request}
+# )
+# return self.get_paginated_response(serializer.data)

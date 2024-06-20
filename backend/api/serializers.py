@@ -7,12 +7,15 @@ from django.core.files.base import ContentFile
 from drf_extra_fields.fields import Base64ImageField
 
 from .mixins import ValidateUsernameMixin
+from users.models import Subscription
 
 User = get_user_model()
 
 
 class UserSerializer(serializers.ModelSerializer):
     """Сериализатор для пользователей."""
+
+    is_subscribed = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -24,7 +27,7 @@ class UserSerializer(serializers.ModelSerializer):
             "last_name",
             "avatar",
             "password",
-            # "is_subscribed",
+            "is_subscribed",
         )
         extra_kwargs = {"password": {"write_only": True}}
 
@@ -40,9 +43,18 @@ class UserSerializer(serializers.ModelSerializer):
         user.save()
         return user
 
+    def get_is_subscribed(self, obj):
+        return False
+        # request = self.context.get("request")
+
+        # if not request.user.is_authenticated:
+        #     return False
+
+        # return request.user.following.filter(following=obj).exists()
+
 
 class AvatarSerializer(serializers.ModelSerializer):
-    """Сериализатор для аватаров."""
+    """Сериализатор для аватара."""
 
     avatar = Base64ImageField(required=True)
 
@@ -51,7 +63,24 @@ class AvatarSerializer(serializers.ModelSerializer):
         fields = ("avatar",)
 
     def validate_avatar(self, value):
-        """Проверяем, что передано не пустое поле."""
-        if value is None:
-            raise ValidationError("Передано пустое поле avatar")
+        if not value:
+            raise serializers.ValidationError(
+                "Поле не может быть пустым, загрузите файл."
+            )
         return value
+
+
+class SubscriptionsSerializer(UserSerializer):
+    pass
+
+    class Meta:
+        model = User
+        fields = (
+            "email",
+            "id",
+            "username",
+            "first_name",
+            "last_name",
+            "avatar",
+            "is_subscribed",
+        )

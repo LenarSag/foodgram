@@ -26,11 +26,6 @@ class CustomUserModel(AbstractUser):
     def __str__(self):
         return self.username
 
-    def clean(self):
-        super().clean()
-        if self.username and self.username.lower() == "me":
-            raise ValidationError("Имя не может быть <me>")
-
     @property
     def is_admin(self):
         return self.is_staff or self.is_superuser
@@ -39,13 +34,13 @@ class CustomUserModel(AbstractUser):
 class Subscription(models.Model):
     follower = models.ForeignKey(
         CustomUserModel,
-        related_name="following",
+        related_name="following_subscriptions",
         on_delete=models.CASCADE,
         verbose_name="Подписчик",
     )
     following = models.ForeignKey(
         CustomUserModel,
-        related_name="followers",
+        related_name="follower_subscriptions",
         on_delete=models.CASCADE,
         verbose_name="Автор рецепта",
     )
