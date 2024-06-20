@@ -1,6 +1,6 @@
-from rest_framework import filters, mixins, status, viewsets
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
+from rest_framework import filters, mixins, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from djoser.views import UserViewSet as DjoserUserViewSet
 
 from .serializers import AvatarSerializer, SubscriptionsSerializer, UserSerializer
+from users.models import Subscription
 
 User = get_user_model()
 
@@ -47,6 +48,51 @@ class UserViewSet(DjoserUserViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(
+        detail=True,
+        methods=("post",),
+        permission_classes=(IsAuthenticated,),
+    )
+    def subscribe(self, request, id=None):
+        """Подписывает текущего пользователя на другого пользователя."""
+        user_to_follow = get_object_or_404(User, pk=id)
+        user = request.user
+        if user == user_to_follow:
+            return Response(
+                {"errors": "Нельзя подписаться на самого себя."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        _, created = Subscription.objects.get_or_create(
+            follower=user, following=user_to_follow
+        )
+
+        if created:
+            serializer = UserSerializer(user_to_follow, context={"request": request})
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            return Response(
+                {"errors": "Вы уже подписаны!"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+    @subscribe.mapping.delete
+    def unsubscribe(self, request, id=None):
+        """Отписывает текущего пользователя от другого пользователя."""
+        user_to_unfollow = get_object_or_404(User, pk=id)
+        user = request.user
+        subscription = Subscription.objects.filter(
+            follower=user, following=user_to_unfollow
+        ).first()
+        if subscription:
+            subscription.delete()
+            return Response(
+                status=status.HTTP_204_NO_CONTENT,
+            )
+        return Response(
+            {"errors": "Вы не были подписаны на этого пользователя!"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    @action(
         detail=False,
         url_path="subscriptions",
         methods=("get",),
@@ -55,18 +101,10 @@ class UserViewSet(DjoserUserViewSet):
     def subscriptions(self, request):
         """Возвращает пользователей, на которых подписан текущий юзер."""
         user = self.request.user
-        subscriptions = user.following_subscriptions.select_related("following").all()
-        following_users = [subscription.following for subscription in subscriptions]
-        page = self.paginate_queryset(following_users)
-        serializer = UserSerializer(page, many=True, context={"request": request})
+
+        following_users = User.objects.filter(follower_subscriptions__follower=user)
+        pages = self.paginate_queryset(following_users)
+        serializer = SubscriptionsSerializer(
+            pages, many=True, context={"request": request}
+        )
         return self.get_paginated_response(serializer.data)
-
-
-# user = self.request.user
-# subscriptions = user.followers.all()
-# # Добавляем пагинацию
-# page = self.paginate_queryset(subscriptions)
-# serializer = SubscriptionsSerializer(
-#     page, many=True, context={"request": request}
-# )
-# return self.get_paginated_response(serializer.data)

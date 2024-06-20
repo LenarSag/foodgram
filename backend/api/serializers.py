@@ -44,13 +44,11 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
     def get_is_subscribed(self, obj):
-        return False
-        # request = self.context.get("request")
-
-        # if not request.user.is_authenticated:
-        #     return False
-
-        # return request.user.following.filter(following=obj).exists()
+        """Проверка подписки текущего пользователя на объект запроса."""
+        request = self.context.get("request")
+        if not request.user.is_authenticated:
+            return False
+        return request.user.following_subscriptions.filter(following=obj).exists()
 
 
 class AvatarSerializer(serializers.ModelSerializer):
@@ -71,7 +69,7 @@ class AvatarSerializer(serializers.ModelSerializer):
 
 
 class SubscriptionsSerializer(UserSerializer):
-    pass
+    """Сериализатор пользователей, на которых подписан текущий пользователь."""
 
     class Meta:
         model = User
@@ -84,3 +82,5 @@ class SubscriptionsSerializer(UserSerializer):
             "avatar",
             "is_subscribed",
         )
+
+        read_only_fields = ("__all__",)
