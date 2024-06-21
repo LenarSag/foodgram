@@ -7,8 +7,14 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from djoser.views import UserViewSet as DjoserUserViewSet
 
-from .serializers import AvatarSerializer, SubscriptionsSerializer, UserSerializer
+from .serializers import (
+    AvatarSerializer,
+    SubscriptionsSerializer,
+    TagSerializer,
+    IngredientSerializer,
+)
 from users.models import Subscription
+from recipes.models import Ingredient, Tag
 
 User = get_user_model()
 
@@ -65,9 +71,10 @@ class UserViewSet(DjoserUserViewSet):
         _, created = Subscription.objects.get_or_create(
             follower=user, following=user_to_follow
         )
-
         if created:
-            serializer = UserSerializer(user_to_follow, context={"request": request})
+            serializer = SubscriptionsSerializer(
+                user_to_follow, context={"request": request}
+            )
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         else:
             return Response(
@@ -101,10 +108,30 @@ class UserViewSet(DjoserUserViewSet):
     def subscriptions(self, request):
         """Возвращает пользователей, на которых подписан текущий юзер."""
         user = self.request.user
-
         following_users = User.objects.filter(follower_subscriptions__follower=user)
         pages = self.paginate_queryset(following_users)
         serializer = SubscriptionsSerializer(
             pages, many=True, context={"request": request}
         )
         return self.get_paginated_response(serializer.data)
+
+
+class TagViewSet(viewsets.ReadOnlyModelViewSet):
+    """Вьюсет получения тэгов."""
+
+    queryset = Tag.objects.all()
+    serializer_class = TagSerializer
+    pagination_class = None
+
+
+class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
+    """Вьюсет получения ингредиентов."""
+
+    queryset = Ingredient.objects.all()
+    serializer_class = IngredientSerializer
+    pagination_class = None
+    filter_backends = (filters.SearchFilter,)
+    search_fields = ("name",)
+
+
+class RecipeViewSet(viewsets.ModelViewSet): ...

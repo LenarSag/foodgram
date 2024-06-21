@@ -2,14 +2,21 @@ from django.db import models
 from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator
 
-from core.constants import MAX_NAME_LENGTH, MAX_SLUG_LENGTH, MAX_UNIT_LENGTH
+from core.constants import (
+    MAX_NAME_LENGTH,
+    MAX_TAG_NAME_LENGTH,
+    MAX_SLUG_LENGTH,
+    MAX_UNIT_LENGTH,
+)
 
 
 User = get_user_model()
 
 
 class Tag(models.Model):
-    name = models.CharField(max_length=MAX_NAME_LENGTH, unique=True, verbose_name="Тэг")
+    name = models.CharField(
+        max_length=MAX_TAG_NAME_LENGTH, unique=True, verbose_name="Тэг"
+    )
     slug = models.SlugField(
         max_length=MAX_SLUG_LENGTH, unique=True, verbose_name="Слаг"
     )
@@ -25,7 +32,7 @@ class Tag(models.Model):
 
 class Ingredient(models.Model):
     name = models.CharField(max_length=MAX_NAME_LENGTH, verbose_name="Ингридиент")
-    unit = models.CharField(
+    measurement_unit = models.CharField(
         max_length=MAX_UNIT_LENGTH, verbose_name="Единица измерения"
     )
 
@@ -35,7 +42,7 @@ class Ingredient(models.Model):
         ordering = ("name",)
 
     def __str__(self) -> str:
-        return f"{self.name} {self.unit}"
+        return f"{self.name} {self.measurement_unit}"
 
 
 class Recipe(models.Model):

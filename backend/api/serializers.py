@@ -1,13 +1,8 @@
-import base64
-
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ValidationError
 from rest_framework import serializers
-from django.core.files.base import ContentFile
 from drf_extra_fields.fields import Base64ImageField
 
-from .mixins import ValidateUsernameMixin
-from users.models import Subscription
+from recipes.models import Ingredient, Tag
 
 User = get_user_model()
 
@@ -44,7 +39,7 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
     def get_is_subscribed(self, obj):
-        """Проверка подписки текущего пользователя на объект запроса."""
+        """Проверяет подписку текущего пользователя на объект запроса."""
         request = self.context.get("request")
         if not request.user.is_authenticated:
             return False
@@ -82,5 +77,24 @@ class SubscriptionsSerializer(UserSerializer):
             "avatar",
             "is_subscribed",
         )
-
         read_only_fields = ("__all__",)
+
+    def get_is_subscribed(self, obj):
+        """Переопределяем метод родительского класса."""
+        return True
+
+
+class TagSerializer(serializers.ModelSerializer):
+    """Сериализатор тегов."""
+
+    class Meta:
+        model = Tag
+        fields = "__all__"
+
+
+class IngredientSerializer(serializers.ModelSerializer):
+    """Сериализатор ингридиентов."""
+
+    class Meta:
+        model = Ingredient
+        fields = "__all__"
