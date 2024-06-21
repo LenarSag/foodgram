@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from rest_framework import filters, mixins, status, viewsets
-from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.decorators import action, api_view
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -9,12 +9,15 @@ from djoser.views import UserViewSet as DjoserUserViewSet
 
 from .serializers import (
     AvatarSerializer,
+    RecipeSerializer,
     SubscriptionsSerializer,
     TagSerializer,
     IngredientSerializer,
 )
+from .permissions import ReadOnlyOrAuthor
 from users.models import Subscription
-from recipes.models import Ingredient, Tag
+from recipes.models import Ingredient, Recipe, Tag
+from core.constants import SHORT_LINK_URL_PATH
 
 User = get_user_model()
 
@@ -38,7 +41,7 @@ class UserViewSet(DjoserUserViewSet):
         permission_classes=(IsAuthenticated,),
     )
     def avatar(self, request):
-        """Добавление аватара пользователя"""
+        """Добавление аватара пользователя."""
         user = request.user
         serializer = AvatarSerializer(
             user, data=request.data, context={"request": request}
@@ -101,8 +104,8 @@ class UserViewSet(DjoserUserViewSet):
 
     @action(
         detail=False,
-        url_path="subscriptions",
-        methods=("get",),
+        # url_path="subscriptions",
+        # methods=("get",),
         permission_classes=(IsAuthenticated,),
     )
     def subscriptions(self, request):
@@ -134,4 +137,18 @@ class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
     search_fields = ("name",)
 
 
-class RecipeViewSet(viewsets.ModelViewSet): ...
+class RecipeViewSet(viewsets.ModelViewSet):
+    queryset = Recipe.objects.all()
+    serializer_class = RecipeSerializer
+    permission_classes = (ReadOnlyOrAuthor,)
+    pagination_class = PageNumberPagination
+
+    @action(detail=True, url_path="get-link")
+    def get_short_link(self, request, pk=None):
+        """Формируем короткую ссылку на рецепт."""
+        short_url = Recipe.objects.get(pk=pk).get_short_url
+
+        return Response(
+            {"short-link": short_url},
+            status=status.HTTP_200_OK,
+        )

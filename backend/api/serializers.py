@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from drf_extra_fields.fields import Base64ImageField
 
-from recipes.models import Ingredient, Tag
+from recipes.models import Ingredient, Recipe, Tag
 
 User = get_user_model()
 
@@ -98,3 +98,36 @@ class IngredientSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ingredient
         fields = "__all__"
+
+
+class RecipeSerializer(serializers.ModelSerializer):
+    """Сериализатор для рецептов."""
+
+    ingredients = serializers.SerializerMethodField()
+    tags = TagSerializer(many=True, read_only=True)
+    image = Base64ImageField()
+    author = UserSerializer(read_only=True)
+    # is_favorited = serializers.SerializerMethodField()
+    # is_in_shopping_cart = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Recipe
+        fields = (
+            "id",
+            "tags",
+            "author",
+            "ingredients",
+            # "is_favorited",
+            # "is_in_shopping_cart",
+            "name",
+            "image",
+            "text",
+            "cooking_time",
+        )
+        # read_only_fields = (
+        #     "is_favorite",
+        #     "is_shopping_cart",
+        # )
+
+    def get_ingredients(self, recipe):
+        return None
