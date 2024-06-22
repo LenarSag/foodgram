@@ -1,20 +1,18 @@
-from hashids import Hashids
-
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator
 
 from core.constants import (
+    HOSTNAME_URL_ADDRESS,
     MAX_NAME_LENGTH,
     MAX_TAG_NAME_LENGTH,
     MAX_SLUG_LENGTH,
     MAX_UNIT_LENGTH,
+    SHORT_LINK_URL_PATH,
 )
-
+from .utils import get_hashed_short_url
 
 User = get_user_model()
-
-hashids = Hashids(min_length=3, salt="")
 
 
 class Tag(models.Model):
@@ -93,12 +91,10 @@ class Recipe(models.Model):
         return f"{self.name}. Автор: {self.author.username}"
 
     @property
-    def short_url(self):
-        return hashids.encode(self.id)
-
-    @property
     def get_short_url(self):
-        return f"https://foodgram.example.org/s/{self.short_url}"
+        short_url = get_hashed_short_url(self.id)
+        HOSTNAME_URL_ADDRESS = "127.0.0.1:8000"  # lenar
+        return f"http://{HOSTNAME_URL_ADDRESS}/{SHORT_LINK_URL_PATH}/{short_url}"
 
 
 class RecipeIngredient(models.Model):

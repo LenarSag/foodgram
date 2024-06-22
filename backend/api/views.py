@@ -17,7 +17,7 @@ from .serializers import (
 from .permissions import ReadOnlyOrAuthor
 from users.models import Subscription
 from recipes.models import Ingredient, Recipe, Tag
-from core.constants import SHORT_LINK_URL_PATH
+
 
 User = get_user_model()
 
@@ -146,8 +146,8 @@ class RecipeViewSet(viewsets.ModelViewSet):
     @action(detail=True, url_path="get-link")
     def get_short_link(self, request, pk=None):
         """Формируем короткую ссылку на рецепт."""
-        short_url = Recipe.objects.get(pk=pk).get_short_url
-
+        recipe = get_object_or_404(Recipe, pk=pk)
+        short_url = recipe.get_short_url
         return Response(
             {"short-link": short_url},
             status=status.HTTP_200_OK,
