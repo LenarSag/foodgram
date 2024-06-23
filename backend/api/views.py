@@ -2,7 +2,6 @@ from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from rest_framework import filters, mixins, status, viewsets
 from rest_framework.decorators import action, api_view
-from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from djoser.views import UserViewSet as DjoserUserViewSet
@@ -14,9 +13,12 @@ from .serializers import (
     TagSerializer,
     IngredientSerializer,
 )
+from .paginators import CustomPaginatorWithLimit
 from .permissions import ReadOnlyOrAuthor
+from .mixins import NoPutUpdateMixin
 from users.models import Subscription
 from recipes.models import Ingredient, Recipe, Tag
+from core.constants import SHORT_LINK_URL_PATH
 
 
 User = get_user_model()
@@ -25,7 +27,7 @@ User = get_user_model()
 class UserViewSet(DjoserUserViewSet):
     """Вьюсет получения/создания пользователей."""
 
-    pagination_class = PageNumberPagination
+    pagination_class = CustomPaginatorWithLimit
 
     def get_permissions(self):
         if self.action == "retrieve":
@@ -124,7 +126,6 @@ class TagViewSet(viewsets.ReadOnlyModelViewSet):
 
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
-    pagination_class = None
 
 
 class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
@@ -132,23 +133,25 @@ class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
 
     queryset = Ingredient.objects.all()
     serializer_class = IngredientSerializer
-    pagination_class = None
     filter_backends = (filters.SearchFilter,)
     search_fields = ("name",)
 
 
-class RecipeViewSet(viewsets.ModelViewSet):
+class RecipeViewSet(NoPutUpdateMixin, viewsets.ModelViewSet):
+    """Вьюсет получения/добавления/удаления рецептов."""
+
     queryset = Recipe.objects.all()
     serializer_class = RecipeSerializer
     permission_classes = (ReadOnlyOrAuthor,)
-    pagination_class = PageNumberPagination
+    pagination_class = CustomPaginatorWithLimit
 
     @action(detail=True, url_path="get-link")
     def get_short_link(self, request, pk=None):
         """Формируем короткую ссылку на рецепт."""
         recipe = get_object_or_404(Recipe, pk=pk)
         short_url = recipe.get_short_url
+        url = request.build_absolute_uri(f"/{SHORT_LINK_URL_PATH}/{short_url}/")
         return Response(
-            {"short-link": short_url},
+            {"short-link": url},
             status=status.HTTP_200_OK,
         )

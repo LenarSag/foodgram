@@ -1,8 +1,11 @@
 from django.contrib.auth import get_user_model
+from django.db.models import F
+from django.db.transaction import atomic
 from rest_framework import serializers
+from rest_framework.validators import UniqueTogetherValidator
 from drf_extra_fields.fields import Base64ImageField
 
-from recipes.models import Ingredient, Recipe, Tag
+from recipes.models import Ingredient, Recipe, RecipeIngredient, Tag
 
 User = get_user_model()
 
@@ -106,9 +109,9 @@ class RecipeSerializer(serializers.ModelSerializer):
     ingredients = serializers.SerializerMethodField()
     tags = TagSerializer(many=True, read_only=True)
     image = Base64ImageField()
-    author = UserSerializer(read_only=True)
-    # is_favorited = serializers.SerializerMethodField()
-    # is_in_shopping_cart = serializers.SerializerMethodField()
+    author = UserSerializer(read_only=True, default=serializers.CurrentUserDefault())
+    is_favorited = serializers.SerializerMethodField()
+    is_in_shopping_cart = serializers.SerializerMethodField()
 
     class Meta:
         model = Recipe
@@ -117,17 +120,104 @@ class RecipeSerializer(serializers.ModelSerializer):
             "tags",
             "author",
             "ingredients",
-            # "is_favorited",
-            # "is_in_shopping_cart",
+            "is_favorited",
+            "is_in_shopping_cart",
             "name",
             "image",
             "text",
             "cooking_time",
         )
-        # read_only_fields = (
-        #     "is_favorite",
-        #     "is_shopping_cart",
-        # )
+        read_only_fields = (
+            "is_favorited",
+            "is_in_shopping_cart",
+        )
+        validators = [
+            UniqueTogetherValidator(
+                queryset=Recipe.objects.all(),
+                fields=("name", "author"),
+                message="У одного автора не может быть более"
+                " одного рецепта с одинаковым названием!",
+            )
+        ]
 
     def get_ingredients(self, recipe):
-        return None
+        """Возвращает список ингредиентов для рецепта."""
+        ingredients = recipe.ingredients.values(
+            "id", "name", "measurement_unit", amount=F("recipe__amount")
+        )
+        return ingredients
+
+    def get_is_favorited(self, recipe):
+        """Проверяет есть ли рецепт в избранном."""
+        user = self.context.get("view").request.user
+        if user.is_anonymous:
+            return False
+        return user.favorite_recipes.filter(recipe=recipe).exists()
+
+    def get_is_in_shopping_cart(self, recipe):
+        """Проверяет есть ли рецепт в корзине."""
+        user = self.context.get("view").request.user
+        if user.is_anonymous:
+            return False
+        return user.cart.filter(recipe=recipe).exists()
+
+    def validate(self, data):
+        """Проверяет входные данные."""
+        ingredients = self.initial_data.get("ingredients")
+        tags = self.initial_data.get("tags")
+        user = self.context.get("request").user
+
+        if not tags:
+            raise serializers.ValidationError("Поле теги не может быть пустым!")
+        if len(tags) != len(set(tags)):
+            raise serializers.ValidationError("Теги должны быть уникальными!")
+
+        if not ingredients:
+            raise serializers.ValidationError("Поле инредиенты не может быть пустым!")
+        ingredients_list = [ingredient.get("id") for ingredient in ingredients]
+        if len(ingredients_list) != len(set(ingredients_list)):
+            raise serializers.ValidationError("Ингредиенты должны быть уникальными!")
+
+        data.update(
+            {
+                "tags": tags,
+                "ingredients": ingredients,
+                "author": user,
+            }
+        )
+        return data
+
+    def _set_ingredients(self, recipe, ingredients):
+        RecipeIngredient.objects.bulk_create(
+            [
+                RecipeIngredient(
+                    ingredient_id=ingredient.get("id"),
+                    amount=ingredient.get("amount"),
+                    recipe=recipe,
+                )
+                for ingredient in ingredients
+            ]
+        )
+
+    @atomic
+    def create(self, validated_data):
+        ingredients = validated_data.pop("ingredients")
+        tags = validated_data.pop("tags")
+
+        recipe = Recipe.objects.create(**validated_data)
+        recipe.tags.set(tags)
+        self._set_ingredients(recipe, ingredients)
+
+        return recipe
+
+    @atomic
+    def update(self, recipe, validated_data):
+        new_ingredients = validated_data.pop("ingredients")
+        new_tags = validated_data.pop("tags")
+
+        recipe.tags.clear()
+        recipe.tags.set(new_tags)
+        recipe.ingredients.clear()
+        self._set_ingredients(recipe, new_ingredients)
+
+        return super().update(recipe, validated_data)

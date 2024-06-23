@@ -3,12 +3,10 @@ from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator
 
 from core.constants import (
-    HOSTNAME_URL_ADDRESS,
     MAX_NAME_LENGTH,
     MAX_TAG_NAME_LENGTH,
     MAX_SLUG_LENGTH,
     MAX_UNIT_LENGTH,
-    SHORT_LINK_URL_PATH,
 )
 from .utils import get_hashed_short_url
 
@@ -93,8 +91,7 @@ class Recipe(models.Model):
     @property
     def get_short_url(self):
         short_url = get_hashed_short_url(self.id)
-        HOSTNAME_URL_ADDRESS = "127.0.0.1:8000"  # lenar
-        return f"http://{HOSTNAME_URL_ADDRESS}/{SHORT_LINK_URL_PATH}/{short_url}"
+        return short_url
 
 
 class RecipeIngredient(models.Model):
@@ -115,14 +112,14 @@ class RecipeIngredient(models.Model):
         validators=(
             MinValueValidator(
                 1,
-                message="Количество ингридиента не может быть меньше 1",
+                message="Количество ингредиента не может быть меньше 1",
             ),
         ),
     )
 
     class Meta:
-        verbose_name = "Ингридиент"
-        verbose_name_plural = "Количество ингридиентов"
+        verbose_name = "Ингредиент"
+        verbose_name_plural = "Количество ингредиентов"
         ordering = ("recipe",)
         constraints = (
             models.UniqueConstraint(
