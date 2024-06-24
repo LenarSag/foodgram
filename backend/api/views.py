@@ -1,13 +1,16 @@
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
+from django.db.models import Sum, F
+from django.http import HttpResponse
 from rest_framework import filters, mixins, status, viewsets
-from rest_framework.decorators import action, api_view
+from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from djoser.views import UserViewSet as DjoserUserViewSet
 
 from .serializers import (
     AvatarSerializer,
+    RecipeInCartSerializer,
     RecipeSerializer,
     SubscriptionsSerializer,
     TagSerializer,
@@ -16,8 +19,9 @@ from .serializers import (
 from .paginators import CustomPaginatorWithLimit
 from .permissions import ReadOnlyOrAuthor
 from .mixins import NoPutUpdateMixin
+from .utils import generate_pdf
 from users.models import Subscription
-from recipes.models import Ingredient, Recipe, Tag
+from recipes.models import Cart, Ingredient, Recipe, Tag
 from core.constants import SHORT_LINK_URL_PATH
 
 
@@ -63,9 +67,9 @@ class UserViewSet(DjoserUserViewSet):
         methods=("post",),
         permission_classes=(IsAuthenticated,),
     )
-    def subscribe(self, request, id=None):
+    def subscribe(self, request, pk=None):
         """Подписывает текущего пользователя на другого пользователя."""
-        user_to_follow = get_object_or_404(User, pk=id)
+        user_to_follow = get_object_or_404(User, pk=pk)
         user = request.user
         if user == user_to_follow:
             return Response(
@@ -87,9 +91,9 @@ class UserViewSet(DjoserUserViewSet):
             )
 
     @subscribe.mapping.delete
-    def unsubscribe(self, request, id=None):
+    def unsubscribe(self, request, pk=None):
         """Отписывает текущего пользователя от другого пользователя."""
-        user_to_unfollow = get_object_or_404(User, pk=id)
+        user_to_unfollow = get_object_or_404(User, pk=pk)
         user = request.user
         subscription = Subscription.objects.filter(
             follower=user, following=user_to_unfollow
@@ -106,8 +110,6 @@ class UserViewSet(DjoserUserViewSet):
 
     @action(
         detail=False,
-        # url_path="subscriptions",
-        # methods=("get",),
         permission_classes=(IsAuthenticated,),
     )
     def subscriptions(self, request):
@@ -155,3 +157,47 @@ class RecipeViewSet(NoPutUpdateMixin, viewsets.ModelViewSet):
             {"short-link": url},
             status=status.HTTP_200_OK,
         )
+
+    @action(
+        detail=False,
+        url_path="download_shopping_cart",
+        permission_classes=(IsAuthenticated,),
+    )
+    def download_shopping_cart(self, request):
+        user = request.user
+        ingredients = (
+            Ingredient.objects.filter(recipe__recipe__in_carts__user=user)
+            .values("name", measurement=F("measurement_unit"))
+            .annotate(amount=Sum("recipe__amount"))
+        )
+
+        pdf_buffer = generate_pdf(ingredients)
+
+        response = HttpResponse(pdf_buffer, content_type="application/pdf")
+        response["Content-Disposition"] = 'attachment; filename="spisok_pokupok.pdf"'
+        return response
+
+    @action(
+        detail=True,
+        url_path="shopping_cart",
+        methods=("post",),
+        permission_classes=(IsAuthenticated,),
+    )
+    def shopping_cart(self, request, pk=None):
+        data = {"user": request.user.id, "recipe": pk}
+        serializer = RecipeInCartSerializer(data=data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @shopping_cart.mapping.delete
+    def delete_recipe_from_shopping_cart(self, request, pk=None):
+        recipe = get_object_or_404(Recipe, pk=pk)
+        deleted = Cart.objects.filter(user=request.user, recipe=recipe).delete()
+        print(*deleted)
+        if not deleted[0]:
+            return Response(
+                {"errors": "Этого рецепта нет в указанном списке"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(status=status.HTTP_204_NO_CONTENT)

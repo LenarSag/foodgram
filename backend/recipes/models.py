@@ -31,14 +31,14 @@ class Tag(models.Model):
 
 
 class Ingredient(models.Model):
-    name = models.CharField(max_length=MAX_NAME_LENGTH, verbose_name="Ингридиент")
+    name = models.CharField(max_length=MAX_NAME_LENGTH, verbose_name="Ингредиент")
     measurement_unit = models.CharField(
         max_length=MAX_UNIT_LENGTH, verbose_name="Единица измерения"
     )
 
     class Meta:
-        verbose_name = "Ингридиент"
-        verbose_name_plural = "Ингридиенты"
+        verbose_name = "Ингредиент"
+        verbose_name_plural = "Ингредиенты"
         ordering = ("name",)
 
     def __str__(self) -> str:
@@ -49,7 +49,7 @@ class Recipe(models.Model):
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name="recepies",
+        related_name="recipes",
         verbose_name="Автор рецепта",
     )
     name = models.CharField(max_length=MAX_NAME_LENGTH, verbose_name="Название рецепта")

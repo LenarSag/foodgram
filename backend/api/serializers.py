@@ -5,7 +5,7 @@ from rest_framework import serializers
 from rest_framework.validators import UniqueTogetherValidator
 from drf_extra_fields.fields import Base64ImageField
 
-from recipes.models import Ingredient, Recipe, RecipeIngredient, Tag
+from recipes.models import Cart, Ingredient, Recipe, RecipeIngredient, Tag
 
 User = get_user_model()
 
@@ -66,8 +66,25 @@ class AvatarSerializer(serializers.ModelSerializer):
         return value
 
 
+class ShortRecipeSerializer(serializers.ModelSerializer):
+    """Сериализатор для модели Recipe для списка подписок."""
+
+    class Meta:
+        model = Recipe
+        fields = (
+            "id",
+            "name",
+            "image",
+            "cooking_time",
+        )
+        read_only_fields = ("__all__",)
+
+
 class SubscriptionsSerializer(UserSerializer):
     """Сериализатор пользователей, на которых подписан текущий пользователь."""
+
+    recipes = serializers.SerializerMethodField()
+    recipes_count = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -79,12 +96,33 @@ class SubscriptionsSerializer(UserSerializer):
             "last_name",
             "avatar",
             "is_subscribed",
+            "recipes",
+            "recipes_count",
         )
         read_only_fields = ("__all__",)
 
     def get_is_subscribed(self, obj):
         """Переопределяем метод родительского класса."""
         return True
+
+    def get_recipes_count(self, obj):
+        """Подсчитывает кол-во рецептов у пользователя на которго подписан."""
+        return obj.recipes.count()
+
+    def get_recipes(self, obj):
+        """Возращает рецепты согласно параметру "recipes_limit" в запросе."""
+        request = self.context.get("request")
+        recipes_limit = request.query_params.get("recipes_limit")
+
+        if recipes_limit:
+            try:
+                recipes_limit = int(recipes_limit)
+                recipes = obj.recipes.all()[:recipes_limit]
+            except ValueError:
+                recipes = obj.recipes.all()
+        else:
+            recipes = obj.recipes.all()
+        return ShortRecipeSerializer(recipes, many=True, context=self.context).data
 
 
 class TagSerializer(serializers.ModelSerializer):
@@ -221,3 +259,26 @@ class RecipeSerializer(serializers.ModelSerializer):
         self._set_ingredients(recipe, new_ingredients)
 
         return super().update(recipe, validated_data)
+
+
+class RecipeInCartSerializer(serializers.ModelSerializer):
+    """Сериализатор для добавления рецептов в список покупок."""
+
+    image = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Cart
+        fields = "__all__"
+        validators = [
+            UniqueTogetherValidator(
+                queryset=Cart.objects.all(),
+                fields=("user", "recipe"),
+                message="Рецепты в корзине должны быть уникальными!",
+            )
+        ]
+
+    def get_image(self, obj):
+        """Возвращает полную ссылку на изображение рецепта."""
+        request = self.context.get("request")
+        image_url = obj.recipe.image.url
+        return request.build_absolute_uri(image_url)
