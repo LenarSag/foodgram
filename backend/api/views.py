@@ -1,17 +1,21 @@
 from django.contrib.auth import get_user_model
-from django.shortcuts import get_object_or_404
 from django.db.models import Sum, F
+from django_filters.rest_framework import DjangoFilterBackend
 from django.http import HttpResponse
-from rest_framework import filters, mixins, status, viewsets
+from django.shortcuts import get_object_or_404
+from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from djoser.views import UserViewSet as DjoserUserViewSet
 
+from .filters import RecipeFilter
 from .serializers import (
+    AddToFavoriteSerializer,
     AvatarSerializer,
-    RecipeInCartSerializer,
+    AddToCartSerializer,
     RecipeSerializer,
+    ShortRecipeSerializer,
     SubscriptionsSerializer,
     TagSerializer,
     IngredientSerializer,
@@ -21,7 +25,7 @@ from .permissions import ReadOnlyOrAuthor
 from .mixins import NoPutUpdateMixin
 from .utils import generate_pdf
 from users.models import Subscription
-from recipes.models import Cart, Ingredient, Recipe, Tag
+from recipes.models import Cart, Favorite, Ingredient, Recipe, Tag
 from core.constants import SHORT_LINK_URL_PATH
 
 
@@ -47,7 +51,7 @@ class UserViewSet(DjoserUserViewSet):
         permission_classes=(IsAuthenticated,),
     )
     def avatar(self, request):
-        """Добавление аватара пользователя."""
+        """Добавляет аватар пользователя."""
         user = request.user
         serializer = AvatarSerializer(
             user, data=request.data, context={"request": request}
@@ -58,6 +62,7 @@ class UserViewSet(DjoserUserViewSet):
 
     @avatar.mapping.delete
     def delete_avatar(self, request):
+        """Удаляет аватар пользователя."""
         if request.user.avatar:
             request.user.avatar.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -146,6 +151,8 @@ class RecipeViewSet(NoPutUpdateMixin, viewsets.ModelViewSet):
     serializer_class = RecipeSerializer
     permission_classes = (ReadOnlyOrAuthor,)
     pagination_class = CustomPaginatorWithLimit
+    filter_backends = (DjangoFilterBackend,)
+    filterset_class = RecipeFilter
 
     @action(detail=True, url_path="get-link")
     def get_short_link(self, request, pk=None):
@@ -164,6 +171,7 @@ class RecipeViewSet(NoPutUpdateMixin, viewsets.ModelViewSet):
         permission_classes=(IsAuthenticated,),
     )
     def download_shopping_cart(self, request):
+        """Возвращает список покупок в формате PDF."""
         user = request.user
         ingredients = (
             Ingredient.objects.filter(recipe__recipe__in_carts__user=user)
@@ -184,17 +192,52 @@ class RecipeViewSet(NoPutUpdateMixin, viewsets.ModelViewSet):
         permission_classes=(IsAuthenticated,),
     )
     def shopping_cart(self, request, pk=None):
-        data = {"user": request.user.id, "recipe": pk}
-        serializer = RecipeInCartSerializer(data=data, context={"request": request})
+        """Добавляет рецепт в список покупок."""
+        user_id = request.user.id
+        recipe = get_object_or_404(Recipe, pk=pk)
+        data = {"user": user_id, "recipe": recipe.pk}
+        serializer = AddToCartSerializer(data=data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        recipe_serializer = ShortRecipeSerializer(recipe, context={"request": request})
+        return Response(recipe_serializer.data, status=status.HTTP_201_CREATED)
 
     @shopping_cart.mapping.delete
     def delete_recipe_from_shopping_cart(self, request, pk=None):
+        """Удаляет рецепт из списка покупок."""
         recipe = get_object_or_404(Recipe, pk=pk)
         deleted = Cart.objects.filter(user=request.user, recipe=recipe).delete()
-        print(*deleted)
+        if not deleted[0]:
+            return Response(
+                {"errors": "Этого рецепта нет в указанном списке"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(
+        detail=True,
+        url_path="favorite",
+        methods=("post",),
+        permission_classes=(IsAuthenticated,),
+    )
+    def favorite(self, request, pk=None):
+        """Добавляет рецепт в список избранного."""
+        user_id = request.user.id
+        recipe = get_object_or_404(Recipe, pk=pk)
+        data = {"user": user_id, "recipe": recipe.pk}
+        serializer = AddToFavoriteSerializer(data=data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        recipe_serializer = ShortRecipeSerializer(recipe, context={"request": request})
+        return Response(recipe_serializer.data, status=status.HTTP_201_CREATED)
+
+    @favorite.mapping.delete
+    def delete_recipe_from_favorite(self, request, pk=None):
+        """Удаляет рецепт из списка избранного."""
+        recipe = get_object_or_404(Recipe, pk=pk)
+        deleted = Favorite.objects.filter(user=request.user, recipe=recipe).delete()
         if not deleted[0]:
             return Response(
                 {"errors": "Этого рецепта нет в указанном списке"},

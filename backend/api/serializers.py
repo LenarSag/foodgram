@@ -5,7 +5,8 @@ from rest_framework import serializers
 from rest_framework.validators import UniqueTogetherValidator
 from drf_extra_fields.fields import Base64ImageField
 
-from recipes.models import Cart, Ingredient, Recipe, RecipeIngredient, Tag
+from recipes.models import Cart, Favorite, Ingredient, Recipe, RecipeIngredient, Tag
+
 
 User = get_user_model()
 
@@ -59,6 +60,7 @@ class AvatarSerializer(serializers.ModelSerializer):
         fields = ("avatar",)
 
     def validate_avatar(self, value):
+        """Проверяет, что поле аватар не пустое."""
         if not value:
             raise serializers.ValidationError(
                 "Поле не может быть пустым, загрузите файл."
@@ -200,7 +202,7 @@ class RecipeSerializer(serializers.ModelSerializer):
         return user.cart.filter(recipe=recipe).exists()
 
     def validate(self, data):
-        """Проверяет входные данные."""
+        """Проверяет поле тегов и ингредиентов."""
         ingredients = self.initial_data.get("ingredients")
         tags = self.initial_data.get("tags")
         user = self.context.get("request").user
@@ -226,6 +228,7 @@ class RecipeSerializer(serializers.ModelSerializer):
         return data
 
     def _set_ingredients(self, recipe, ingredients):
+        """Добавляет ингредиенты в промежуточную модель."""
         RecipeIngredient.objects.bulk_create(
             [
                 RecipeIngredient(
@@ -239,6 +242,7 @@ class RecipeSerializer(serializers.ModelSerializer):
 
     @atomic
     def create(self, validated_data):
+        """Создает новый рецепт."""
         ingredients = validated_data.pop("ingredients")
         tags = validated_data.pop("tags")
 
@@ -250,6 +254,7 @@ class RecipeSerializer(serializers.ModelSerializer):
 
     @atomic
     def update(self, recipe, validated_data):
+        """Удаляет рецепт."""
         new_ingredients = validated_data.pop("ingredients")
         new_tags = validated_data.pop("tags")
 
@@ -261,14 +266,12 @@ class RecipeSerializer(serializers.ModelSerializer):
         return super().update(recipe, validated_data)
 
 
-class RecipeInCartSerializer(serializers.ModelSerializer):
+class AddToCartSerializer(serializers.ModelSerializer):
     """Сериализатор для добавления рецептов в список покупок."""
-
-    image = serializers.SerializerMethodField()
 
     class Meta:
         model = Cart
-        fields = "__all__"
+        fields = ("user", "recipe")
         validators = [
             UniqueTogetherValidator(
                 queryset=Cart.objects.all(),
@@ -277,8 +280,16 @@ class RecipeInCartSerializer(serializers.ModelSerializer):
             )
         ]
 
-    def get_image(self, obj):
-        """Возвращает полную ссылку на изображение рецепта."""
-        request = self.context.get("request")
-        image_url = obj.recipe.image.url
-        return request.build_absolute_uri(image_url)
+
+class AddToFavoriteSerializer(AddToCartSerializer):
+    """Сериализатор для добавления рецептов в список избранных."""
+
+    class Meta(AddToCartSerializer.Meta):
+        model = Favorite
+        validators = [
+            UniqueTogetherValidator(
+                queryset=Favorite.objects.all(),
+                fields=("user", "recipe"),
+                message="Рецепты в избранном должны быть уникальными!",
+            )
+        ]
