@@ -6,10 +6,12 @@ from reportlab.pdfgen import canvas
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfbase import pdfmetrics
 
-from core.constants import (FONT_SIZE_HEADER,
-                            FONT_SIZE_INGREDIENTS,
-                            INDENT_REGULAR
+from core.constants import (
+    FONT_SIZE_HEADER,
+    FONT_SIZE_INGREDIENTS,
+    INDENT_REGULAR
 )
+
 
 def generate_pdf(ingredients):
     """Создает из списка ингредиентов файл pdf с поддержкой кириллицы."""
