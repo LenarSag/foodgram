@@ -10,10 +10,10 @@ class CustomUserAdmin(UserAdmin):
     list_display = (
         "username",
         "email",
-        "password",
         "first_name",
         "last_name",
         "is_active",
+        "is_staff",
     )
-    list_editable = ("password", "is_active")
+    list_editable = ("is_active", "is_staff")
     search_fields = ("username", "email")

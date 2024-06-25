@@ -21,7 +21,7 @@ from .serializers import (
     IngredientSerializer,
 )
 from .paginators import CustomPaginatorWithLimit
-from .permissions import ReadOnlyOrAuthor
+from .permissions import ReadOnlyOrIsAuthenticatedOrAuthor
 from .mixins import NoPutUpdateMixin
 from .utils import generate_pdf
 from users.models import Subscription
@@ -149,7 +149,7 @@ class RecipeViewSet(NoPutUpdateMixin, viewsets.ModelViewSet):
 
     queryset = Recipe.objects.all()
     serializer_class = RecipeSerializer
-    permission_classes = (ReadOnlyOrAuthor,)
+    permission_classes = (ReadOnlyOrIsAuthenticatedOrAuthor,)
     pagination_class = CustomPaginatorWithLimit
     filter_backends = (DjangoFilterBackend,)
     filterset_class = RecipeFilter
@@ -182,7 +182,9 @@ class RecipeViewSet(NoPutUpdateMixin, viewsets.ModelViewSet):
         pdf_buffer = generate_pdf(ingredients)
 
         response = HttpResponse(pdf_buffer, content_type="application/pdf")
-        response["Content-Disposition"] = 'attachment; filename="spisok_pokupok.pdf"'
+        response["Content-Disposition"] = (
+            'attachment; filename="spisok_pokupok.pdf"'  # lenar
+        )
         return response
 
     @action(

@@ -15,15 +15,15 @@ User = get_user_model()
 
 class Tag(models.Model):
     name = models.CharField(
-        max_length=MAX_TAG_NAME_LENGTH, unique=True, verbose_name="Тэг"
+        max_length=MAX_TAG_NAME_LENGTH, unique=True, verbose_name="Тег"
     )
     slug = models.SlugField(
         max_length=MAX_SLUG_LENGTH, unique=True, verbose_name="Слаг"
     )
 
     class Meta:
-        verbose_name = "Тэг"
-        verbose_name_plural = "Тэги"
+        verbose_name = "Тег"
+        verbose_name_plural = "Теги"
         ordering = ("name",)
 
     def __str__(self) -> str:
@@ -64,7 +64,7 @@ class Recipe(models.Model):
         through="RecipeIngredient",
         verbose_name="Ингредиенты блюда",
     )
-    tags = models.ManyToManyField(Tag, related_name="recipes", verbose_name="Тэги")
+    tags = models.ManyToManyField(Tag, related_name="recipes", verbose_name="Теги")
     cooking_time = models.IntegerField(
         validators=[
             MinValueValidator(
@@ -73,11 +73,14 @@ class Recipe(models.Model):
         ],
         verbose_name="Время приготовления",
     )
+    created_at = models.DateTimeField(
+        auto_now_add=True, verbose_name="Время добавления"
+    )
 
     class Meta:
         verbose_name = "Рецепт"
         verbose_name_plural = "Рецепты"
-        ordering = ("name",)
+        ordering = ("-created_at",)
         constraints = (
             models.UniqueConstraint(
                 fields=("name", "author"),

@@ -1,7 +1,7 @@
 from rest_framework import permissions
 
 
-class ReadOnlyOrAuthor(permissions.BasePermission):
+class ReadOnlyOrIsAuthenticatedOrAuthor(permissions.BasePermission):
     """
     Класс разрешений на получение, создание, обновление, удаление контента.
 
