@@ -7,8 +7,11 @@ from core.constants import (
     MAX_TAG_NAME_LENGTH,
     MAX_SLUG_LENGTH,
     MAX_UNIT_LENGTH,
+    MIN_AMOUNT_INGREDIENTS,
+    MIN_COOKING_TIME,
 )
 from .utils import get_hashed_short_url
+
 
 User = get_user_model()
 
@@ -31,7 +34,9 @@ class Tag(models.Model):
 
 
 class Ingredient(models.Model):
-    name = models.CharField(max_length=MAX_NAME_LENGTH, verbose_name="Ингредиент")
+    name = models.CharField(
+        max_length=MAX_NAME_LENGTH, verbose_name="Ингредиент"
+    )
     measurement_unit = models.CharField(
         max_length=MAX_UNIT_LENGTH, verbose_name="Единица измерения"
     )
@@ -52,7 +57,9 @@ class Recipe(models.Model):
         related_name="recipes",
         verbose_name="Автор рецепта",
     )
-    name = models.CharField(max_length=MAX_NAME_LENGTH, verbose_name="Название рецепта")
+    name = models.CharField(
+        max_length=MAX_NAME_LENGTH, verbose_name="Название рецепта"
+    )
     image = models.ImageField(
         upload_to="recipes/images/",
         verbose_name="Фото блюда",
@@ -64,11 +71,15 @@ class Recipe(models.Model):
         through="RecipeIngredient",
         verbose_name="Ингредиенты блюда",
     )
-    tags = models.ManyToManyField(Tag, related_name="recipes", verbose_name="Теги")
+    tags = models.ManyToManyField(
+        Tag, related_name="recipes", verbose_name="Теги"
+    )
     cooking_time = models.IntegerField(
         validators=[
             MinValueValidator(
-                1, message="Минимальное время приготовления не может быть меньше 1"
+                MIN_COOKING_TIME,
+                message="Минимальное время приготовления "
+                "не может быть меньше 1",
             )
         ],
         verbose_name="Время приготовления",
@@ -114,7 +125,7 @@ class RecipeIngredient(models.Model):
         verbose_name="Количество",
         validators=(
             MinValueValidator(
-                1,
+                MIN_AMOUNT_INGREDIENTS,
                 message="Количество ингредиента не может быть меньше 1",
             ),
         ),
@@ -135,7 +146,10 @@ class RecipeIngredient(models.Model):
         )
 
     def __str__(self):
-        return f"{self.amount} {self.ingredient.unit} {self.ingredient.name} в {self.recipe.name}"
+        return (
+            f"{self.amount} {self.ingredient.unit} "
+            f"{self.ingredient.name} в {self.recipe.name}"
+        )
 
 
 class Favorite(models.Model):

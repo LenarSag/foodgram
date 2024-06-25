@@ -11,10 +11,14 @@ def handle_short_url(request, short_url):
         decoded_values = get_decoded_short_url(short_url)
         if decoded_values:
             recipe_id = decoded_values[0]
-            recipe_detail_url = reverse("api:recipes-detail", args=(recipe_id,))
+            recipe_detail_url = reverse(
+                "api:recipes-detail", args=(recipe_id,)
+            )
             return redirect(recipe_detail_url)
         return HttpResponseNotFound(
             "URL-адрес недействителен или срок его действия истек."
         )
     except Exception as e:
-        return HttpResponseNotFound(f"Произошла ошибка {e} при обработке URL-адреса.")
+        return HttpResponseNotFound(
+            f"Произошла ошибка {e} при обработке URL-адреса."
+        )

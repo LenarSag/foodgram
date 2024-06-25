@@ -34,7 +34,9 @@ class RecipeAdmin(admin.ModelAdmin):
     @admin.display(description="Ингредиенты")
     def get_ingredients(self, obj):
         """Возвращает название ингредиентов."""
-        return ", ".join([ingredient.name for ingredient in obj.ingredients.all()])
+        return ", ".join(
+            [ingredient.name for ingredient in obj.ingredients.all()]
+        )
 
     @admin.display(description="Теги")
     def get_tags(self, obj):

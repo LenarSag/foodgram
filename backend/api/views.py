@@ -26,7 +26,7 @@ from .mixins import NoPutUpdateMixin
 from .utils import generate_pdf
 from users.models import Subscription
 from recipes.models import Cart, Favorite, Ingredient, Recipe, Tag
-from core.constants import SHORT_LINK_URL_PATH
+from core.constants import PDF_FILENAME, SHORT_LINK_URL_PATH
 
 
 User = get_user_model()
@@ -92,7 +92,8 @@ class UserViewSet(DjoserUserViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         else:
             return Response(
-                {"errors": "Вы уже подписаны!"}, status=status.HTTP_400_BAD_REQUEST
+                {"errors": "Вы уже подписаны!"},
+                status=status.HTTP_400_BAD_REQUEST
             )
 
     @subscribe.mapping.delete
@@ -120,7 +121,9 @@ class UserViewSet(DjoserUserViewSet):
     def subscriptions(self, request):
         """Возвращает пользователей, на которых подписан текущий юзер."""
         user = self.request.user
-        following_users = User.objects.filter(follower_subscriptions__follower=user)
+        following_users = User.objects.filter(
+            follower_subscriptions__follower=user
+        )
         pages = self.paginate_queryset(following_users)
         serializer = SubscriptionsSerializer(
             pages, many=True, context={"request": request}
@@ -159,7 +162,9 @@ class RecipeViewSet(NoPutUpdateMixin, viewsets.ModelViewSet):
         """Формируем короткую ссылку на рецепт."""
         recipe = get_object_or_404(Recipe, pk=pk)
         short_url = recipe.get_short_url
-        url = request.build_absolute_uri(f"/{SHORT_LINK_URL_PATH}/{short_url}/")
+        url = request.build_absolute_uri(
+            f"/{SHORT_LINK_URL_PATH}/{short_url}/"
+        )
         return Response(
             {"short-link": url},
             status=status.HTTP_200_OK,
@@ -183,7 +188,7 @@ class RecipeViewSet(NoPutUpdateMixin, viewsets.ModelViewSet):
 
         response = HttpResponse(pdf_buffer, content_type="application/pdf")
         response["Content-Disposition"] = (
-            'attachment; filename="spisok_pokupok.pdf"'  # lenar
+            f"attachment; filename={PDF_FILENAME}"
         )
         return response
 
@@ -198,18 +203,24 @@ class RecipeViewSet(NoPutUpdateMixin, viewsets.ModelViewSet):
         user_id = request.user.id
         recipe = get_object_or_404(Recipe, pk=pk)
         data = {"user": user_id, "recipe": recipe.pk}
-        serializer = AddToCartSerializer(data=data, context={"request": request})
+        serializer = AddToCartSerializer(
+            data=data, context={"request": request}
+        )
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
-        recipe_serializer = ShortRecipeSerializer(recipe, context={"request": request})
+        recipe_serializer = ShortRecipeSerializer(
+            recipe, context={"request": request}
+        )
         return Response(recipe_serializer.data, status=status.HTTP_201_CREATED)
 
     @shopping_cart.mapping.delete
     def delete_recipe_from_shopping_cart(self, request, pk=None):
         """Удаляет рецепт из списка покупок."""
         recipe = get_object_or_404(Recipe, pk=pk)
-        deleted = Cart.objects.filter(user=request.user, recipe=recipe).delete()
+        deleted = Cart.objects.filter(
+            user=request.user, recipe=recipe
+        ).delete()
         if not deleted[0]:
             return Response(
                 {"errors": "Этого рецепта нет в указанном списке"},
@@ -228,18 +239,24 @@ class RecipeViewSet(NoPutUpdateMixin, viewsets.ModelViewSet):
         user_id = request.user.id
         recipe = get_object_or_404(Recipe, pk=pk)
         data = {"user": user_id, "recipe": recipe.pk}
-        serializer = AddToFavoriteSerializer(data=data, context={"request": request})
+        serializer = AddToFavoriteSerializer(
+            data=data, context={"request": request}
+        )
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
-        recipe_serializer = ShortRecipeSerializer(recipe, context={"request": request})
+        recipe_serializer = ShortRecipeSerializer(
+            recipe, context={"request": request}
+        )
         return Response(recipe_serializer.data, status=status.HTTP_201_CREATED)
 
     @favorite.mapping.delete
     def delete_recipe_from_favorite(self, request, pk=None):
         """Удаляет рецепт из списка избранного."""
         recipe = get_object_or_404(Recipe, pk=pk)
-        deleted = Favorite.objects.filter(user=request.user, recipe=recipe).delete()
+        deleted = Favorite.objects.filter(
+            user=request.user, recipe=recipe
+        ).delete()
         if not deleted[0]:
             return Response(
                 {"errors": "Этого рецепта нет в указанном списке"},

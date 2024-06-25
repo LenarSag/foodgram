@@ -1,7 +1,5 @@
 from django.contrib.auth.models import AbstractUser
-from django.core.exceptions import ValidationError
 from django.db import models
-
 
 from core.constants import MAX_EMAIL_LENGTH, MAX_USER_NAME_LENGTH
 
@@ -16,7 +14,9 @@ class CustomUserModel(AbstractUser):
     last_name = models.CharField(
         max_length=MAX_USER_NAME_LENGTH, verbose_name="Фамилия пользователя"
     )
-    avatar = models.ImageField(upload_to="users/images/", null=True, default=None)
+    avatar = models.ImageField(
+        upload_to="users/images/", null=True, default=None
+    )
 
     class Meta:
         verbose_name = "Пользователь"
@@ -56,4 +56,6 @@ class Subscription(models.Model):
         )
 
     def __str__(self):
-        return f"{self.follower.username} подписан на {self.following.username}"
+        return (
+            f"{self.follower.username} подписан на {self.following.username}"
+        )
