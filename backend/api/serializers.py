@@ -5,14 +5,45 @@ from rest_framework import serializers
 from rest_framework.validators import UniqueTogetherValidator
 from drf_extra_fields.fields import Base64ImageField
 
-from recipes.models import Cart, Favorite, Ingredient, Recipe, RecipeIngredient, Tag
+from .validators import get_validated_tags, get_validated_ingredients
+from recipes.models import (
+    Cart, Favorite, Ingredient, Recipe, RecipeIngredient, Tag
+)
 
 
 User = get_user_model()
 
 
+class UserCreateSerializer(serializers.ModelSerializer):
+    """Сериализатор для создания пользователей."""
+
+    class Meta:
+        model = User
+        fields = (
+            "email",
+            "id",
+            "username",
+            "first_name",
+            "last_name",
+            "password",
+        )
+        extra_kwargs = {"password": {"write_only": True}}
+
+    def create(self, validated_data):
+        """Создаёт нового пользователя c хешированием пароля."""
+        user = User(
+            email=validated_data.get("email"),
+            username=validated_data.get("username"),
+            first_name=validated_data.get("first_name"),
+            last_name=validated_data.get("last_name"),
+        )
+        user.set_password(validated_data.get("password"))
+        user.save()
+        return user
+
+
 class UserSerializer(serializers.ModelSerializer):
-    """Сериализатор для пользователей."""
+    """Сериализатор пользователей."""
 
     is_subscribed = serializers.SerializerMethodField()
 
@@ -25,22 +56,8 @@ class UserSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "avatar",
-            "password",
             "is_subscribed",
         )
-        extra_kwargs = {"password": {"write_only": True}}
-
-    def create(self, validated_data):
-        """Создаёт нового пользователя."""
-        user = User(
-            email=validated_data.get("email"),
-            username=validated_data.get("username"),
-            first_name=validated_data.get("first_name"),
-            last_name=validated_data.get("last_name"),
-        )
-        user.set_password(validated_data.get("password"))
-        user.save()
-        return user
 
     def get_is_subscribed(self, obj):
         """Проверяет подписку текущего пользователя на объект запроса."""
@@ -200,6 +217,14 @@ class RecipeSerializer(serializers.ModelSerializer):
         if user.is_anonymous:
             return False
         return user.cart.filter(recipe=recipe).exists()
+    
+    def validate_image(self, value):
+        """Проверяет, что поле изображение не пустое."""
+        if not value:
+            raise serializers.ValidationError(
+                "Поле не может быть пустым, загрузите файл."
+            )
+        return value
 
     def validate(self, data):
         """Проверяет поле тегов и ингредиентов."""
@@ -207,21 +232,13 @@ class RecipeSerializer(serializers.ModelSerializer):
         tags = self.initial_data.get("tags")
         user = self.context.get("request").user
 
-        if not tags:
-            raise serializers.ValidationError("Поле теги не может быть пустым!")
-        if len(tags) != len(set(tags)):
-            raise serializers.ValidationError("Теги должны быть уникальными!")
-
-        if not ingredients:
-            raise serializers.ValidationError("Поле инредиенты не может быть пустым!")
-        ingredients_list = [ingredient.get("id") for ingredient in ingredients]
-        if len(ingredients_list) != len(set(ingredients_list)):
-            raise serializers.ValidationError("Ингредиенты должны быть уникальными!")
+        validated_tags = get_validated_tags(tags)
+        validated_ingredients = get_validated_ingredients(ingredients)
 
         data.update(
             {
-                "tags": tags,
-                "ingredients": ingredients,
+                "tags": validated_tags,
+                "ingredients": validated_ingredients,
                 "author": user,
             }
         )
