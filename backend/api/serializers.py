@@ -64,7 +64,9 @@ class UserSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if not request.user.is_authenticated:
             return False
-        return request.user.following_subscriptions.filter(following=obj).exists()
+        return request.user.following_subscriptions.filter(
+            following=obj
+        ).exists()
 
 
 class AvatarSerializer(serializers.ModelSerializer):
@@ -141,7 +143,9 @@ class SubscriptionsSerializer(UserSerializer):
                 recipes = obj.recipes.all()
         else:
             recipes = obj.recipes.all()
-        return ShortRecipeSerializer(recipes, many=True, context=self.context).data
+        return ShortRecipeSerializer(
+            recipes, many=True, context=self.context
+        ).data
 
 
 class TagSerializer(serializers.ModelSerializer):
@@ -165,8 +169,10 @@ class RecipeSerializer(serializers.ModelSerializer):
 
     ingredients = serializers.SerializerMethodField()
     tags = TagSerializer(many=True, read_only=True)
-    image = Base64ImageField()
-    author = UserSerializer(read_only=True, default=serializers.CurrentUserDefault())
+    image = Base64ImageField(required=True)
+    author = UserSerializer(
+        read_only=True, default=serializers.CurrentUserDefault()
+    )
     is_favorited = serializers.SerializerMethodField()
     is_in_shopping_cart = serializers.SerializerMethodField()
 
@@ -217,7 +223,7 @@ class RecipeSerializer(serializers.ModelSerializer):
         if user.is_anonymous:
             return False
         return user.cart.filter(recipe=recipe).exists()
-    
+
     def validate_image(self, value):
         """Проверяет, что поле изображение не пустое."""
         if not value:
