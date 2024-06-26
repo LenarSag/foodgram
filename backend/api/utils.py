@@ -20,7 +20,7 @@ def generate_pdf(ingredients):
     _, height = letter
 
     current_dir = os.path.dirname(__file__)
-    font_path = os.path.join(current_dir, "fonts/DejaVuSans.ttf")
+    font_path = os.path.join(current_dir, "fonts/dejavusans.ttf")
 
     pdfmetrics.registerFont(TTFont("DejaVuSans", font_path))
     pdf.setFont("DejaVuSans", FONT_SIZE_HEADER)

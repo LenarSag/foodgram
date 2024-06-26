@@ -112,13 +112,13 @@ sudo docker compose exec backend python manage.py migrate
 
 * Создать суперпользователя: 
 ```
-sudo docker compose exec backend python manage.py createsuperuser
+sudo docker exec -it  foodgram-backend-1 python manage.py createsuperuser
 ```
 
 * Добавить ингредиенты и теги:
 
 ```
-sudo docker exec -it foodgram-app python manage.py loaddata data/ingredients_for_db.json
+sudo docker exec -it  foodgram-backend-1 python manage.py loaddata data/ingredients_for_db.json
 ```
 
 * Собрать файлы статики: 
