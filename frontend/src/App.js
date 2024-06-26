@@ -7,7 +7,7 @@ import api from "./api";
 import styles from "./styles.module.css";
 
 import {
-  // About,
+  About,
   Main,
   Cart,
   SignIn,
@@ -22,7 +22,7 @@ import {
   NotFound,
   UpdateAvatar,
   ResetPassword,
-  // Technologies,
+  Technologies,
 } from "./pages";
 
 import { AuthContext, UserContext } from "./contexts";
@@ -295,7 +295,7 @@ function App() {
 
             <Route exact path="/about">
               <NotFound />
-              {/* <About component={About} /> */}
+              <About component={About} />
             </Route>
 
             <Route exact path="/reset-password">
@@ -304,7 +304,7 @@ function App() {
 
             <Route exact path="/technologies">
               <NotFound />
-              {/* <Technologies component={Technologies}/> */}
+              <Technologies component={Technologies}/>
             </Route>
 
             <Route exact path="/recipes">
