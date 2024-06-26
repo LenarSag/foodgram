@@ -6,7 +6,6 @@ charset-normalizer==3.3.2
 cryptography==42.0.8
 defusedxml==0.8.0rc2
 Django==3.2.16
-django-cors-headers==3.13.0
 django-filter==21.1
 django-templated-mail==1.1.1
 djangorestframework==3.12.4
