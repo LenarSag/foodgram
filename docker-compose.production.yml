@@ -1,0 +1,40 @@
+version: '3'
+
+volumes:
+  pg_data:
+  static_volume:
+  media:
+
+# Всё отличие — заменяем build на image и указываем, какой образ использовать
+services:
+  db:
+    image: postgres:13.10
+    env_file: .env
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+  backend:
+    image: lenarst/foodgram_backend
+    env_file: .env
+    volumes:
+      - static_volume:/backend_static
+      - media:/app/media
+    depends_on:
+      - db
+  frontend:
+    image: lenarst/foodgram_frontend  # Качаем с Docker Hub
+    env_file: .env
+    command: cp -r /app/build/. /frontend_static/
+    volumes:
+      - static_volume:/frontend_static
+  gateway:
+    image: lenarst/foodgram_gateway  # Качаем с Docker Hub
+    env_file: .env
+    volumes:
+      - static_volume:/staticfiles/
+      - media:/media
+    ports:
+      - 8000:80
+    depends_on:
+      - backend
+
+#Lenar 
