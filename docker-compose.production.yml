@@ -5,7 +5,6 @@ volumes:
   static_volume:
   media:
 
-# Всё отличие — заменяем build на image и указываем, какой образ использовать
 services:
   db:
     image: postgres:13.10
