@@ -100,20 +100,35 @@ ALLOWED_HOSTS=127.0.0.1, localhost
 
 **Запустить Docker Compose с дефолтной конфигурацией (docker-compose.yml):**
 
-* Выполнить сборку контейнеров: *sudo docker compose up -d --build*
+* Выполнить сборку контейнеров:
+```
+sudo docker compose up -d --build
+```
 
-* Применить миграции: *sudo docker compose exec backend python manage.py migrate*
+* Применить миграции: 
+```
+*sudo docker compose exec backend python manage.py migrate*
+```
 
-* Создать суперпользователя: *sudo docker compose exec backend python manage.py createsuperuser*
+* Создать суперпользователя: 
+```
+sudo docker compose exec backend python manage.py createsuperuser
+```
 
 * Добавить ингредиенты и теги:
 
+```
 sudo docker exec -it foodgram-app python manage.py loaddata data/ingredients_for_db.json
+```
 
+* Собрать файлы статики: 
+```
+sudo docker compose exec backend python manage.py collectstatic
+```
 
-* Собрать файлы статики: *sudo docker compose exec backend python manage.py collectstatic*
-
-* Скопировать файлы статики в /backend_static/static/ backend-контейнера: *sudo docker compose exec backend cp -r /app/collected_static/. /backend_static/static/*
+* Скопировать файлы статики в /backend_static/static/ backend-контейнера: 
+```sudo docker compose exec backend cp -r /app/collected_static/. /backend_static/static/
+```
 
 * Перейти по адресу 127.0.0.1:8000
 
