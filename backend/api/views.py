@@ -3,13 +3,13 @@ from django.db.models import Sum, F
 from django_filters.rest_framework import DjangoFilterBackend
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
-from rest_framework import filters, status, viewsets
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from djoser.views import UserViewSet as DjoserUserViewSet
 
-from .filters import RecipeFilter
+from .filters import RecipeFilter, IngredientFilter
 from .serializers import (
     AddToFavoriteSerializer,
     AvatarSerializer,
@@ -73,9 +73,9 @@ class UserViewSet(DjoserUserViewSet):
         methods=("post",),
         permission_classes=(IsAuthenticated,),
     )
-    def subscribe(self, request, pk=None):
+    def subscribe(self, request, id=None):
         """Подписывает текущего пользователя на другого пользователя."""
-        user_to_follow = get_object_or_404(User, pk=pk)
+        user_to_follow = get_object_or_404(User, pk=id)
         user = request.user
         if user == user_to_follow:
             return Response(
@@ -91,16 +91,15 @@ class UserViewSet(DjoserUserViewSet):
                 user_to_follow, context={"request": request}
             )
             return Response(serializer.data, status=status.HTTP_201_CREATED)
-        else:
-            return Response(
-                {"errors": "Вы уже подписаны!"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        return Response(
+            {"errors": "Вы уже подписаны на этого пользователя!"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
     @subscribe.mapping.delete
-    def unsubscribe(self, request, pk=None):
+    def unsubscribe(self, request, id=None):
         """Отписывает текущего пользователя от другого пользователя."""
-        user_to_unfollow = get_object_or_404(User, pk=pk)
+        user_to_unfollow = get_object_or_404(User, pk=id)
         user = request.user
         subscription = Subscription.objects.filter(
             follower=user, following=user_to_unfollow
@@ -145,8 +144,8 @@ class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
 
     queryset = Ingredient.objects.all()
     serializer_class = IngredientSerializer
-    filter_backends = (filters.SearchFilter,)
-    search_fields = ("name",)
+    filter_backends = (DjangoFilterBackend,)
+    filterset_class = IngredientFilter
 
 
 class RecipeViewSet(NoPutUpdateMixin, viewsets.ModelViewSet):

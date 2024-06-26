@@ -1,10 +1,11 @@
 from django_filters import (
+    CharFilter,
     ModelMultipleChoiceFilter,
     NumberFilter,
     FilterSet,
 )
 
-from recipes.models import Recipe, Tag
+from recipes.models import Ingredient, Recipe, Tag
 
 
 class RecipeFilter(FilterSet):
@@ -40,3 +41,13 @@ class RecipeFilter(FilterSet):
     class Meta:
         model = Recipe
         fields = ("author", "tags", "is_favorited", "is_in_shopping_cart")
+
+
+class IngredientFilter(FilterSet):
+    """Фильтр по названию для ингредиентов."""
+
+    name = CharFilter(field_name="name", lookup_expr="icontains")
+
+    class Meta:
+        model = Ingredient
+        fields = ("name",)

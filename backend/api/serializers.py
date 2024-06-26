@@ -123,7 +123,7 @@ class SubscriptionsSerializer(UserSerializer):
         read_only_fields = ("__all__",)
 
     def get_is_subscribed(self, obj):
-        """Переопределяем метод родительского класса."""
+        """Переопределяет метод родительского класса."""
         return True
 
     def get_recipes_count(self, obj):
@@ -277,7 +277,7 @@ class RecipeSerializer(serializers.ModelSerializer):
 
     @atomic
     def update(self, recipe, validated_data):
-        """Удаляет рецепт."""
+        """Обновляет рецепт."""
         new_ingredients = validated_data.pop("ingredients")
         new_tags = validated_data.pop("tags")
 
