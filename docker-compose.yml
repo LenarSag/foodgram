@@ -31,7 +31,7 @@ services:
     volumes:
       - static_volume:/staticfiles/
       - media:/media
-      - ~/foodgram/docs:/usr/share/nginx/html/docs
+      - ./docs/:/usr/share/nginx/html/api/docs/
     ports:
       - 8000:80
     depends_on:

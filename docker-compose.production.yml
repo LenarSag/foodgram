@@ -31,10 +31,10 @@ services:
     volumes:
       - static_volume:/staticfiles/
       - media:/media
-      - ~/foodgram/docs:/usr/share/nginx/html/docs
+      - ./docs/:/usr/share/nginx/html/api/docs/
+      - ./frontend/build:/usr/share/nginx/html/ #Lenar to check
     ports:
       - 8000:80
     depends_on:
       - backend
 
-#Lenar 
