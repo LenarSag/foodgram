@@ -5,7 +5,6 @@ volumes:
   static_volume:
   media:
 
-# Всё отличие — заменяем build на image и указываем, какой образ использовать
 services:
   db:
     image: postgres:13.10
@@ -32,6 +31,7 @@ services:
     volumes:
       - static_volume:/staticfiles/
       - media:/media
+      - ~/foodgram/docs:/usr/share/nginx/html/docs
     ports:
       - 8000:80
     depends_on:

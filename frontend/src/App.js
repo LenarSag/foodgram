@@ -294,7 +294,6 @@ function App() {
             </Route>
 
             <Route exact path="/about">
-              <NotFound />
               <About component={About} />
             </Route>
 
@@ -303,7 +302,6 @@ function App() {
             </Route>
 
             <Route exact path="/technologies">
-              <NotFound />
               <Technologies component={Technologies}/>
             </Route>
 
