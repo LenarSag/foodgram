@@ -5,7 +5,7 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from djoser.views import UserViewSet as DjoserUserViewSet
 
@@ -22,7 +22,8 @@ from .serializers import (
 )
 from .paginators import CustomPaginatorWithLimit
 from .permissions import ReadOnlyOrIsAuthenticatedOrAuthor
-from .mixins import NoPutUpdateMixin
+from .mixins import CustomDjoserPermissionsMethodsMixin, NoPutUpdateMixin
+from .validators import get_validated_id
 from .utils import generate_pdf
 from users.models import Subscription
 from recipes.models import Cart, Favorite, Ingredient, Recipe, Tag
@@ -32,17 +33,10 @@ from core.constants import PDF_FILENAME, SHORT_LINK_URL_PATH
 User = get_user_model()
 
 
-class UserViewSet(DjoserUserViewSet):
+class UserViewSet(CustomDjoserPermissionsMethodsMixin, DjoserUserViewSet):
     """Вьюсет получения/создания пользователей."""
 
     pagination_class = CustomPaginatorWithLimit
-
-    def get_permissions(self):
-        if self.action == "retrieve":
-            self.permission_classes = (AllowAny,)
-        elif self.action == "me":
-            self.permission_classes = (IsAuthenticated,)
-        return super().get_permissions()
 
     @action(
         detail=False,
@@ -75,7 +69,8 @@ class UserViewSet(DjoserUserViewSet):
     )
     def subscribe(self, request, id=None):
         """Подписывает текущего пользователя на другого пользователя."""
-        user_to_follow = get_object_or_404(User, pk=id)
+        validated_id = get_validated_id(id, "users")
+        user_to_follow = get_object_or_404(User, pk=validated_id)
         user = request.user
         if user == user_to_follow:
             return Response(
@@ -99,7 +94,8 @@ class UserViewSet(DjoserUserViewSet):
     @subscribe.mapping.delete
     def unsubscribe(self, request, id=None):
         """Отписывает текущего пользователя от другого пользователя."""
-        user_to_unfollow = get_object_or_404(User, pk=id)
+        validated_id = get_validated_id(id, "users")
+        user_to_unfollow = get_object_or_404(User, pk=validated_id)
         user = request.user
         subscription = Subscription.objects.filter(
             follower=user, following=user_to_unfollow
@@ -161,7 +157,8 @@ class RecipeViewSet(NoPutUpdateMixin, viewsets.ModelViewSet):
     @action(detail=True, url_path="get-link")
     def get_short_link(self, request, pk=None):
         """Формируем короткую ссылку на рецепт."""
-        recipe = get_object_or_404(Recipe, pk=pk)
+        validated_id = get_validated_id(pk, "recipes")
+        recipe = get_object_or_404(Recipe, pk=validated_id)
         short_url = recipe.get_short_url
         url = request.build_absolute_uri(
             f"/{SHORT_LINK_URL_PATH}/{short_url}/"
@@ -201,8 +198,9 @@ class RecipeViewSet(NoPutUpdateMixin, viewsets.ModelViewSet):
     )
     def shopping_cart(self, request, pk=None):
         """Добавляет рецепт в список покупок."""
+        validated_id = get_validated_id(pk, "recipes")
         user_id = request.user.id
-        recipe = get_object_or_404(Recipe, pk=pk)
+        recipe = get_object_or_404(Recipe, pk=validated_id)
         data = {"user": user_id, "recipe": recipe.pk}
         serializer = AddToCartSerializer(
             data=data, context={"request": request}
@@ -218,7 +216,8 @@ class RecipeViewSet(NoPutUpdateMixin, viewsets.ModelViewSet):
     @shopping_cart.mapping.delete
     def delete_recipe_from_shopping_cart(self, request, pk=None):
         """Удаляет рецепт из списка покупок."""
-        recipe = get_object_or_404(Recipe, pk=pk)
+        validated_id = get_validated_id(pk, "recipes")
+        recipe = get_object_or_404(Recipe, pk=validated_id)
         deleted = Cart.objects.filter(
             user=request.user, recipe=recipe
         ).delete()
@@ -237,8 +236,9 @@ class RecipeViewSet(NoPutUpdateMixin, viewsets.ModelViewSet):
     )
     def favorite(self, request, pk=None):
         """Добавляет рецепт в список избранного."""
+        validated_id = get_validated_id(pk, "recipes")
         user_id = request.user.id
-        recipe = get_object_or_404(Recipe, pk=pk)
+        recipe = get_object_or_404(Recipe, pk=validated_id)
         data = {"user": user_id, "recipe": recipe.pk}
         serializer = AddToFavoriteSerializer(
             data=data, context={"request": request}
@@ -254,7 +254,8 @@ class RecipeViewSet(NoPutUpdateMixin, viewsets.ModelViewSet):
     @favorite.mapping.delete
     def delete_recipe_from_favorite(self, request, pk=None):
         """Удаляет рецепт из списка избранного."""
-        recipe = get_object_or_404(Recipe, pk=pk)
+        validated_id = get_validated_id(pk, "recipes")
+        recipe = get_object_or_404(Recipe, pk=validated_id)
         deleted = Favorite.objects.filter(
             user=request.user, recipe=recipe
         ).delete()

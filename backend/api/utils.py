@@ -9,7 +9,10 @@ from reportlab.pdfbase import pdfmetrics
 from core.constants import (
     FONT_SIZE_HEADER,
     FONT_SIZE_INGREDIENTS,
-    INDENT_REGULAR
+    INDENT_TOP_REGULAR,
+    INDENT_LEFT_REGULAR,
+    INDENT_AFTER_HEADER,
+    INDENT_BETWEEN_INGREDIENTS
 )
 
 
@@ -24,10 +27,12 @@ def generate_pdf(ingredients):
 
     pdfmetrics.registerFont(TTFont("DejaVuSans", font_path))
     pdf.setFont("DejaVuSans", FONT_SIZE_HEADER)
-    y = height - INDENT_REGULAR
+    position_vertical = height - INDENT_TOP_REGULAR
 
-    pdf.drawString(30, y, "Ваш список покупок:")
-    y -= 30
+    pdf.drawString(
+        INDENT_LEFT_REGULAR, position_vertical, "Ваш список покупок:"
+    )
+    position_vertical -= INDENT_AFTER_HEADER
 
     pdf.setFont("DejaVuSans", FONT_SIZE_INGREDIENTS)
 
@@ -35,11 +40,15 @@ def generate_pdf(ingredients):
         name = ingredient.get("name")
         measurement = ingredient.get("measurement")
         amount = ingredient.get("amount")
-        pdf.drawString(30, y, f"{name}: {amount} {measurement}")
-        y -= 20
-        if y < INDENT_REGULAR:
+        pdf.drawString(
+            INDENT_LEFT_REGULAR,
+            position_vertical,
+            f"{name}: {amount} {measurement}"
+        )
+        position_vertical -= INDENT_BETWEEN_INGREDIENTS
+        if position_vertical < INDENT_TOP_REGULAR:
             pdf.showPage()
-            y = height - INDENT_REGULAR
+            position_vertical = height - INDENT_TOP_REGULAR
 
     pdf.save()
     buffer.seek(0)

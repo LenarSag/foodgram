@@ -1,8 +1,10 @@
 from django.db import models
 from django.contrib.auth import get_user_model
-from django.core.validators import MinValueValidator
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 from core.constants import (
+    MAX_AMOUNT_INGREDIENTS,
+    MAX_COOKING_TIME,
     MAX_NAME_LENGTH,
     MAX_TAG_NAME_LENGTH,
     MAX_SLUG_LENGTH,
@@ -28,6 +30,12 @@ class Tag(models.Model):
         verbose_name = "Тег"
         verbose_name_plural = "Теги"
         ordering = ("name",)
+        constraints = (
+            models.UniqueConstraint(
+                fields=("name", "slug"),
+                name="unique_tag",
+            ),
+        )
 
     def __str__(self) -> str:
         return f"{self.name}"
@@ -45,6 +53,12 @@ class Ingredient(models.Model):
         verbose_name = "Ингредиент"
         verbose_name_plural = "Ингредиенты"
         ordering = ("name",)
+        constraints = (
+            models.UniqueConstraint(
+                fields=("name", "measurement_unit"),
+                name="unique_ingredient",
+            ),
+        )
 
     def __str__(self) -> str:
         return f"{self.name} {self.measurement_unit}"
@@ -75,14 +89,19 @@ class Recipe(models.Model):
         Tag, related_name="recipes", verbose_name="Теги"
     )
     cooking_time = models.IntegerField(
+        verbose_name="Время приготовления",
         validators=[
             MinValueValidator(
                 MIN_COOKING_TIME,
                 message="Минимальное время приготовления "
                 "не может быть меньше 1",
+            ),
+            MaxValueValidator(
+                MAX_COOKING_TIME,
+                message="Максимальное время приготовления "
+                "не может быть больше 720"
             )
         ],
-        verbose_name="Время приготовления",
     )
     created_at = models.DateTimeField(
         auto_now_add=True, verbose_name="Время добавления"
@@ -128,6 +147,10 @@ class RecipeIngredient(models.Model):
                 MIN_AMOUNT_INGREDIENTS,
                 message="Количество ингредиента не может быть меньше 1",
             ),
+            MaxValueValidator(
+                MAX_AMOUNT_INGREDIENTS,
+                message="Количество ингредиента не может быть больше 32768",
+            )
         ),
     )
 
@@ -147,7 +170,7 @@ class RecipeIngredient(models.Model):
 
     def __str__(self):
         return (
-            f"{self.amount} {self.ingredient.unit} "
+            f"{self.amount} {self.ingredient.measurement_unit} "
             f"{self.ingredient.name} в {self.recipe.name}"
         )
 

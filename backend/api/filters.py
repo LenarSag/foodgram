@@ -1,9 +1,9 @@
 from django_filters import (
     CharFilter,
-    ModelMultipleChoiceFilter,
     NumberFilter,
     FilterSet,
 )
+from django.db.models import Q
 
 from recipes.models import Ingredient, Recipe, Tag
 
@@ -12,21 +12,30 @@ class RecipeFilter(FilterSet):
     """Список фильтров для рецептов."""
 
     author = NumberFilter(field_name="author__id")
-    tags = ModelMultipleChoiceFilter(
-        field_name="tags__slug",
-        queryset=Tag.objects.all(),
-        to_field_name="slug",
-    )
+    tags = CharFilter(method='filter_tags')
     is_favorited = NumberFilter(method="filter_is_favorited")
     is_in_shopping_cart = NumberFilter(method="filter_is_in_shopping_cart")
+
+    def filter_tags(self, queryset, name, value):
+        """Возвращает рецепты по фильтру "теги" если они существуют."""
+        if not value:
+            return queryset
+
+        tags = value.split(",")
+        existing_tags = Tag.objects.filter(slug__in=tags)
+        if not existing_tags.exists():
+            return queryset.none()
+
+        q_objects = Q()
+        for tag in existing_tags:
+            q_objects |= Q(tags__slug=tag.slug)
+        return queryset.filter(q_objects).distinct()
 
     def filter_is_favorited(self, queryset, name, value):
         """Возвращает рецепты по фильтру "в избранном"."""
         value = bool(value)
         if self.request.user.is_authenticated and value:
             return queryset.filter(favorites__user=self.request.user)
-        elif self.request.user.is_authenticated and not value:
-            return queryset.exclude(favorites__user=self.request.user)
         return queryset
 
     def filter_is_in_shopping_cart(self, queryset, name, value):
@@ -34,8 +43,6 @@ class RecipeFilter(FilterSet):
         value = bool(value)
         if self.request.user.is_authenticated and value:
             return queryset.filter(in_carts__user=self.request.user)
-        elif self.request.user.is_authenticated and not value:
-            return queryset.exclude(in_carts__user=self.request.user)
         return queryset
 
     class Meta:
