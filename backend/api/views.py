@@ -116,7 +116,7 @@ class UserViewSet(CustomDjoserPermissionsMethodsMixin, DjoserUserViewSet):
         permission_classes=(IsAuthenticated,),
     )
     def subscriptions(self, request):
-        """Возвращает пользователей, на которых подписан текущий юзер."""
+        """Возвращает пользователей на которых подписан текущий юзер."""
         user = self.request.user
         following_users = User.objects.filter(
             follower_subscriptions__follower=user
@@ -156,7 +156,7 @@ class RecipeViewSet(NoPutUpdateMixin, viewsets.ModelViewSet):
 
     @action(detail=True, url_path="get-link")
     def get_short_link(self, request, pk=None):
-        """Формируем короткую ссылку на рецепт."""
+        """Формирует короткую ссылку на рецепт."""
         validated_id = get_validated_id(pk, "recipes")
         recipe = get_object_or_404(Recipe, pk=validated_id)
         short_url = recipe.get_short_url
