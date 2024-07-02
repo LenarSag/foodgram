@@ -3,18 +3,6 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 
 
-class NoPutUpdateMixin:
-    """Запрещает метод PUT."""
-
-    def update(self, request, *args, **kwargs):
-        if request.method == "PUT":
-            return Response(
-                status=status.HTTP_405_METHOD_NOT_ALLOWED,
-                data={"detail": 'Метод "PUT" не разрешен.'},
-            )
-        return super().update(request, *args, **kwargs)
-
-
 class CustomDjoserPermissionsMethodsMixin:
     """Переопределяет разрешения и методы класса UserViewSet Djoser."""
 

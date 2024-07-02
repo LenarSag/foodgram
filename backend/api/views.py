@@ -22,7 +22,7 @@ from .serializers import (
 )
 from .paginators import CustomPaginatorWithLimit
 from .permissions import ReadOnlyOrIsAuthenticatedOrAuthor
-from .mixins import CustomDjoserPermissionsMethodsMixin, NoPutUpdateMixin
+from .mixins import CustomDjoserPermissionsMethodsMixin
 from .validators import get_validated_id
 from .utils import generate_pdf
 from users.models import Subscription
@@ -144,7 +144,7 @@ class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
     filterset_class = IngredientFilter
 
 
-class RecipeViewSet(NoPutUpdateMixin, viewsets.ModelViewSet):
+class RecipeViewSet(viewsets.ModelViewSet):
     """Вьюсет получения/добавления/удаления рецептов."""
 
     queryset = Recipe.objects.all()
@@ -154,12 +154,20 @@ class RecipeViewSet(NoPutUpdateMixin, viewsets.ModelViewSet):
     filter_backends = (DjangoFilterBackend,)
     filterset_class = RecipeFilter
 
+    def update(self, request, *args, **kwargs):
+        if request.method == "PUT":
+            return Response(
+                status=status.HTTP_405_METHOD_NOT_ALLOWED,
+                data={"detail": 'Метод "PUT" не разрешен.'},
+            )
+        return super().update(request, *args, **kwargs)
+
     @action(detail=True, url_path="get-link")
     def get_short_link(self, request, pk=None):
         """Формирует короткую ссылку на рецепт."""
         validated_id = get_validated_id(pk, "recipes")
         recipe = get_object_or_404(Recipe, pk=validated_id)
-        short_url = recipe.get_short_url
+        short_url = recipe.short_url
         url = request.build_absolute_uri(
             f"/{SHORT_LINK_URL_PATH}/{short_url}/"
         )
@@ -218,15 +226,16 @@ class RecipeViewSet(NoPutUpdateMixin, viewsets.ModelViewSet):
         """Удаляет рецепт из списка покупок."""
         validated_id = get_validated_id(pk, "recipes")
         recipe = get_object_or_404(Recipe, pk=validated_id)
-        deleted = Cart.objects.filter(
+        on_cart_recipe = Cart.objects.filter(
             user=request.user, recipe=recipe
-        ).delete()
-        if not deleted[0]:
-            return Response(
-                {"errors": "Этого рецепта нет в указанном списке"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        ).first()
+        if on_cart_recipe:
+            on_cart_recipe.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(
+            {"errors": "Этого рецепта нет в списке покупок."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     @action(
         detail=True,
@@ -256,12 +265,13 @@ class RecipeViewSet(NoPutUpdateMixin, viewsets.ModelViewSet):
         """Удаляет рецепт из списка избранного."""
         validated_id = get_validated_id(pk, "recipes")
         recipe = get_object_or_404(Recipe, pk=validated_id)
-        deleted = Favorite.objects.filter(
+        favorite_recipe = Favorite.objects.filter(
             user=request.user, recipe=recipe
-        ).delete()
-        if not deleted[0]:
-            return Response(
-                {"errors": "Этого рецепта нет в указанном списке"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        ).first()
+        if favorite_recipe:
+            favorite_recipe.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(
+            {"errors": "Этого рецепта нет в списке избранного."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )

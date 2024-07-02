@@ -30,12 +30,7 @@ class Tag(models.Model):
         verbose_name = "Тег"
         verbose_name_plural = "Теги"
         ordering = ("name",)
-        constraints = (
-            models.UniqueConstraint(
-                fields=("name", "slug"),
-                name="unique_tag",
-            ),
-        )
+        unique_together = ("name", "slug")
 
     def __str__(self) -> str:
         return f"{self.name}"
@@ -53,12 +48,7 @@ class Ingredient(models.Model):
         verbose_name = "Ингредиент"
         verbose_name_plural = "Ингредиенты"
         ordering = ("name",)
-        constraints = (
-            models.UniqueConstraint(
-                fields=("name", "measurement_unit"),
-                name="unique_ingredient",
-            ),
-        )
+        unique_together = ("name", "measurement_unit")
 
     def __str__(self) -> str:
         return f"{self.name} {self.measurement_unit}"
@@ -93,13 +83,17 @@ class Recipe(models.Model):
         validators=[
             MinValueValidator(
                 MIN_COOKING_TIME,
-                message="Минимальное время приготовления "
-                "не может быть меньше 1",
+                message=(
+                    "Минимальное время приготовления "
+                    f"не может быть меньше {MIN_COOKING_TIME}"
+                ),
             ),
             MaxValueValidator(
                 MAX_COOKING_TIME,
-                message="Максимальное время приготовления "
-                "не может быть больше 720"
+                message=(
+                    "Максимальное время приготовления "
+                    f"не может быть больше {MAX_COOKING_TIME}"
+                ),
             )
         ],
     )
@@ -111,18 +105,13 @@ class Recipe(models.Model):
         verbose_name = "Рецепт"
         verbose_name_plural = "Рецепты"
         ordering = ("-created_at",)
-        constraints = (
-            models.UniqueConstraint(
-                fields=("name", "author"),
-                name="unique_for_author",
-            ),
-        )
+        unique_together = ("name", "author")
 
     def __str__(self):
         return f"{self.name}. Автор: {self.author.username}"
 
     @property
-    def get_short_url(self):
+    def short_url(self):
         short_url = get_hashed_short_url(self.id)
         return short_url
 
@@ -145,11 +134,17 @@ class RecipeIngredient(models.Model):
         validators=(
             MinValueValidator(
                 MIN_AMOUNT_INGREDIENTS,
-                message="Количество ингредиента не может быть меньше 1",
+                message=(
+                    "Количество ингредиента не может быть "
+                    f"меньше {MIN_AMOUNT_INGREDIENTS}"
+                ),
             ),
             MaxValueValidator(
                 MAX_AMOUNT_INGREDIENTS,
-                message="Количество ингредиента не может быть больше 32768",
+                message=(
+                    "Количество ингредиента не может быть "
+                    f"больше {MAX_AMOUNT_INGREDIENTS}"
+                ),
             )
         ),
     )
@@ -158,15 +153,7 @@ class RecipeIngredient(models.Model):
         verbose_name = "Ингредиент"
         verbose_name_plural = "Количество ингредиентов"
         ordering = ("recipe",)
-        constraints = (
-            models.UniqueConstraint(
-                fields=(
-                    "recipe",
-                    "ingredient",
-                ),
-                name="unique_recipe_ingridient",
-            ),
-        )
+        unique_together = ("recipe", "ingredient")
 
     def __str__(self):
         return (
@@ -193,15 +180,7 @@ class Favorite(models.Model):
         verbose_name = "Избранный рецепт"
         verbose_name_plural = "Избранные рецепты"
         ordering = ("user",)
-        constraints = (
-            models.UniqueConstraint(
-                fields=(
-                    "recipe",
-                    "user",
-                ),
-                name="unique_favorite_recipe",
-            ),
-        )
+        unique_together = ("recipe", "user")
 
     def __str__(self):
         return f"{self.user.username} любит {self.recipe.name}"
@@ -222,15 +201,11 @@ class Cart(models.Model):
         verbose_name="Владлец списка",
     )
 
-    constraints = (
-        models.UniqueConstraint(
-            fields=(
-                "recipe",
-                "user",
-            ),
-            name="unique_recipe_in_cart",
-        ),
-    )
+    class Meta:
+        verbose_name = "Рецепт в корзине"
+        verbose_name_plural = "Рецепты в корзине"
+        ordering = ("user",)
+        unique_together = ("recipe", "user")
 
     def __str__(self):
         return f"У {self.user.username} в корзине {self.recipe.name}"

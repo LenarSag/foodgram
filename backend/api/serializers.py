@@ -2,7 +2,6 @@ from django.contrib.auth import get_user_model
 from django.db.models import F
 from django.db.transaction import atomic
 from rest_framework import serializers
-from rest_framework.validators import UniqueTogetherValidator
 from drf_extra_fields.fields import Base64ImageField
 
 from .validators import get_validated_tags, get_validated_ingredients
@@ -62,11 +61,12 @@ class UserSerializer(serializers.ModelSerializer):
     def get_is_subscribed(self, obj):
         """Проверяет подписку текущего пользователя на объект запроса."""
         request = self.context.get("request")
-        if not request.user.is_authenticated:
-            return False
-        return request.user.following_subscriptions.filter(
-            following=obj
-        ).exists()
+        return (
+            request.user.is_authenticated
+            and request.user.following_subscriptions.filter(
+                following=obj
+            ).exists()
+        )
 
 
 class AvatarSerializer(serializers.ModelSerializer):
@@ -98,7 +98,6 @@ class ShortRecipeSerializer(serializers.ModelSerializer):
             "image",
             "cooking_time",
         )
-        read_only_fields = ("__all__",)
 
 
 class SubscriptionsSerializer(UserSerializer):
@@ -120,11 +119,16 @@ class SubscriptionsSerializer(UserSerializer):
             "recipes",
             "recipes_count",
         )
-        read_only_fields = ("__all__",)
 
     def get_is_subscribed(self, obj):
         """Переопределяет метод родительского класса."""
         return True
+    # Не нужно проверять подписку на юзера,
+    # так как этот сериалайзер вызывается только
+    # после того, как подписались на юзера get_or_create(views, Ln 81)
+    # или после того как получили queryset с фильтром по подпискам
+    # following_users(views, Ln 121)
+    # соответственно проверка лишняя
 
     def get_recipes_count(self, obj):
         """Подсчитывает кол-во рецептов у пользователя на которго подписан."""
@@ -194,14 +198,6 @@ class RecipeSerializer(serializers.ModelSerializer):
             "is_favorited",
             "is_in_shopping_cart",
         )
-        validators = [
-            UniqueTogetherValidator(
-                queryset=Recipe.objects.all(),
-                fields=("name", "author"),
-                message="У одного автора не может быть более"
-                " одного рецепта с одинаковым названием!",
-            )
-        ]
 
     def get_ingredients(self, recipe):
         """Возвращает список ингредиентов для рецепта."""
@@ -295,24 +291,11 @@ class AddToCartSerializer(serializers.ModelSerializer):
     class Meta:
         model = Cart
         fields = ("user", "recipe")
-        validators = [
-            UniqueTogetherValidator(
-                queryset=Cart.objects.all(),
-                fields=("user", "recipe"),
-                message="Рецепты в корзине должны быть уникальными!",
-            )
-        ]
 
 
-class AddToFavoriteSerializer(AddToCartSerializer):
+class AddToFavoriteSerializer(serializers.ModelSerializer):
     """Сериализатор для добавления рецептов в список избранных."""
 
-    class Meta(AddToCartSerializer.Meta):
+    class Meta:
         model = Favorite
-        validators = [
-            UniqueTogetherValidator(
-                queryset=Favorite.objects.all(),
-                fields=("user", "recipe"),
-                message="Рецепты в избранном должны быть уникальными!",
-            )
-        ]
+        fields = ("user", "recipe")

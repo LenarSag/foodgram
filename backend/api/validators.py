@@ -72,13 +72,15 @@ def get_validated_ingredients(ingredients):
         amount < MIN_AMOUNT_INGREDIENTS for amount in ingredients_amount_list
     ):
         raise serializers.ValidationError(
-            "Количество ингредиента не может быть меньше 1"
+            "Количество ингредиента не может быть меньше "
+            f"{MIN_AMOUNT_INGREDIENTS}"
         )
     if any(
         amount > MAX_AMOUNT_INGREDIENTS for amount in ingredients_amount_list
     ):
         raise serializers.ValidationError(
-            "Количество ингредиентов не может быть больше 32768"
+            "Количество ингредиентов не может быть больше "
+            f"{MAX_AMOUNT_INGREDIENTS}"
         )
 
     existing_ingredients = Ingredient.objects.filter(

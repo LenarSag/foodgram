@@ -3,7 +3,7 @@ from django.core.exceptions import ValidationError
 from django.forms import BaseInlineFormSet
 
 from .models import Ingredient, Recipe, RecipeIngredient, Tag
-from core.constants import INGREDIENTS_PER_PAGE, POSTS_PER_PAGE
+from core.constants import INGREDIENTS_PER_PAGE, OBJ_PER_PAGE
 
 
 @admin.register(Tag)
@@ -13,7 +13,7 @@ class TagAdmin(admin.ModelAdmin):
         "slug",
     )
     search_fields = ("slug",)
-    list_per_page = POSTS_PER_PAGE
+    list_per_page = OBJ_PER_PAGE
 
 
 @admin.register(Ingredient)
@@ -59,7 +59,7 @@ class RecipeAdmin(admin.ModelAdmin):
     list_editable = ("name", "text", "image")
     search_fields = ("author__username", "name")
     list_filter = ("tags__slug",)
-    list_per_page = POSTS_PER_PAGE
+    list_per_page = OBJ_PER_PAGE
     inlines = (RecipeIngredientInline,)
 
     @admin.display(description="Ингредиенты")
