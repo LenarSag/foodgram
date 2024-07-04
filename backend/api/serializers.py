@@ -101,7 +101,7 @@ class ShortRecipeSerializer(serializers.ModelSerializer):
 
 
 class SubscriptionsSerializer(UserSerializer):
-    """Сериализатор пользователей, на которых подписан текущий пользователь."""
+    """Сериализатор пользователей на которых подписан текущий пользователь."""
 
     recipes = serializers.SerializerMethodField()
     recipes_count = serializers.SerializerMethodField()
@@ -123,12 +123,6 @@ class SubscriptionsSerializer(UserSerializer):
     def get_is_subscribed(self, obj):
         """Переопределяет метод родительского класса."""
         return True
-    # Не нужно проверять подписку на юзера,
-    # так как этот сериалайзер вызывается только
-    # после того, как подписались на юзера get_or_create(views, Ln 81)
-    # или после того как получили queryset с фильтром по подпискам
-    # following_users(views, Ln 121)
-    # соответственно проверка лишняя
 
     def get_recipes_count(self, obj):
         """Подсчитывает кол-во рецептов у пользователя на которго подписан."""
@@ -209,16 +203,18 @@ class RecipeSerializer(serializers.ModelSerializer):
     def get_is_favorited(self, recipe):
         """Проверяет есть ли рецепт в избранном."""
         user = self.context.get("view").request.user
-        if user.is_anonymous:
-            return False
-        return user.favorite_recipes.filter(recipe=recipe).exists()
+        return (
+            user.is_authenticated
+            and user.favorite_recipes.filter(recipe=recipe).exists()
+        )
 
     def get_is_in_shopping_cart(self, recipe):
         """Проверяет есть ли рецепт в корзине."""
         user = self.context.get("view").request.user
-        if user.is_anonymous:
-            return False
-        return user.cart.filter(recipe=recipe).exists()
+        return (
+            user.is_authenticated
+            and user.cart.filter(recipe=recipe).exists()
+        )
 
     def validate_image(self, value):
         """Проверяет, что поле изображение не пустое."""
